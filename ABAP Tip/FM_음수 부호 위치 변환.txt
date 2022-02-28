@@ -1,0 +1,5 @@
+DATA: lv_sign    TYPE string.
+
+CALL FUNCTION 'CLOI_PUT_SIGN_IN_FRONT'
+          CHANGING
+            VALUE         = lv_sign.

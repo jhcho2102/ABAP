@@ -1,0 +1,28 @@
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK' OR 'CANC'.
+      LEAVE TO SCREEN 0.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+  ENDCASE.
+ENDMODULE.                 " EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  gv_copy = ok_code.
+  CLEAR: ok_code, gs_stable.
+
+  PERFORM alv_check_changed_data.
+
+  CASE gv_copy.
+    WHEN ''.
+  ENDCASE.
+ENDMODULE.                 " USER_COMMAND_0100  INPUT

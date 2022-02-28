@@ -1,0 +1,22 @@
+*&--------------------------------------------------*
+*& TOP ---------------------------------------------*
+*&--------------------------------------------------*
+DATA: gd_total TYPE REF TO DATA.
+
+*&--------------------------------------------------*
+*& PBO - set_alv - display table 이후 ---------------*
+*&--------------------------------------------------*
+FIELD-SYMBOLS: <total> LIKE gt_data, <fs1> LIKE gs_disp.
+
+CALL METHOD go_grid->get_subtotals
+	IMPORTING
+		ep_collect00  =  gd_total.
+
+ASSIGN gd_total->* TO <total>.
+LOOP AT <total> ASSIGNING <fs1>.
+	<fs1>-fld_name = '지급 총계'.
+ENDLOOP.
+
+CALL METHOD go_grid->refresh_table_display
+	EXPORTING
+		i_soft_refresh = 'X'.

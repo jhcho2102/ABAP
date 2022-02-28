@@ -1,0 +1,28 @@
+SM36 에서 batch job 생성
+SM37 에서 batch job 조회
+....
+
+*&---------------------------------------------------------------------*
+*& START-OF-SELECTION.
+*&---------------------------------------------------------------------*
+START-OF-SELECTION.
+  IF SY-BATCH = ' '.
+    IF P_NEW = 'X'.
+      PERFORM GET_DATA_NEW.
+    ELSE.
+      PERFORM GET_DATA_DISP.
+    ENDIF.
+  ENDIF.
+
+*&---------------------------------------------------------------------*
+*& END-OF-SELECTION.
+*&---------------------------------------------------------------------*
+END-OF-SELECTION.
+  IF P_NEW = 'X' AND SY-BATCH = 'X'.
+    PERFORM GET_DATA_NEW.
+    PERFORM SAVE_DATA_NEW.
+  ELSEIF P_NEW = 'X'.
+    PERFORM SAVE_DATA_NEW.
+  ELSE. " p_disp
+    CALL SCREEN 100.
+  ENDIF.

@@ -1,0 +1,347 @@
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_OBJECT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_object .
+  CREATE OBJECT go_container
+    EXPORTING
+      container_name = 'GO_CONTAINER'.
+
+  CREATE OBJECT go_grid
+    EXPORTING
+      i_parent = go_container.
+ENDFORM.                    " CREATE_OBJECT
+*&---------------------------------------------------------------------*
+*&      Form  SET_FIELDCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fieldcat .
+  PERFORM abap_structdescr.
+
+  FIELD-SYMBOLS <fcat> LIKE gs_fieldcat.
+  LOOP AT gt_fieldcat ASSIGNING <fcat>.
+    <fcat>-col_opt = 'X'.
+    CASE <fcat>-fieldname.
+      WHEN ''.
+        <fcat>-no_out = 'X'.
+      WHEN 'MATNR'.
+        <fcat>-coltext = '자재'.
+    ENDCASE.
+  ENDLOOP.
+ENDFORM.                    " SET_FIELDCAT
+*&---------------------------------------------------------------------*
+*&      Form  ABAP_STRUCTDESCR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM abap_structdescr .
+  DATA : lo_strdescr TYPE REF TO cl_abap_structdescr,
+         lt_dfies    TYPE ddfields,
+         ls_dfies    TYPE dfies.
+
+  CLEAR gt_fieldcat.
+
+  lo_strdescr ?= cl_abap_structdescr=>describe_by_data( gs_disp ).
+  lt_dfies = cl_salv_data_descr=>read_structdescr( lo_strdescr ).
+
+  LOOP AT lt_dfies INTO ls_dfies.
+    MOVE-CORRESPONDING ls_dfies TO gs_fieldcat.
+    APPEND gs_fieldcat TO gt_fieldcat.
+    CLEAR gs_fieldcat.
+  ENDLOOP.
+ENDFORM.                    " ABAP_STRUCTDESCR
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layout .
+  CLEAR gs_layout.
+
+  gs_layout-zebra = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode = 'D'.
+*  gs_layout-stlyefieldname = ''.
+*  gs_layout-grid_title = ''.
+ENDFORM.                    " SET_LAYOUT
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort .
+
+ENDFORM.                    " SET_SORT
+*&---------------------------------------------------------------------*
+*&      Form  SET_EXCLUDE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_exclude .
+  CLEAR: gs_exclude, gt_exclude.
+
+*  PERFORM append_exclude
+*    USING : cl_gui_alv_grid=>mc_fc_excl_all. " 전체 제거
+*    USING : cl_gui_alv_grid=>mc_fc_loc_undo. " 실행취소 &LOCAL&UNDO
+*            cl_gui_alv_grid=>mc_fc_auf,      " 소계확장 &AUF
+*            cl_gui_alv_grid=>mc_fc_average,  " &AVERAGE
+*            cl_gui_alv_grid=>mc_fc_back_classic,
+*            cl_gui_alv_grid=>mc_fc_call_abc, " &ABC
+*            cl_gui_alv_grid=>mc_fc_call_chain,
+*            cl_gui_alv_grid=>mc_fc_call_crbatch,
+*            cl_gui_alv_grid=>mc_fc_call_crweb,
+*            cl_gui_alv_grid=>mc_fc_call_lineitems,
+*            cl_gui_alv_grid=>mc_fc_call_master_data,
+*            cl_gui_alv_grid=>mc_fc_call_more,
+*            cl_gui_alv_grid=>mc_fc_call_report,
+*            cl_gui_alv_grid=>mc_fc_call_xint,
+*            cl_gui_alv_grid=>mc_fc_call_xxl,
+*            cl_gui_alv_grid=>mc_fc_col_invisible,
+*            cl_gui_alv_grid=>mc_fc_col_optimize,
+*            cl_gui_alv_grid=>mc_fc_current_variant,
+*            cl_gui_alv_grid=>mc_fc_data_save,
+*            cl_gui_alv_grid=>mc_fc_delete_filter,
+*            cl_gui_alv_grid=>mc_fc_deselect_all,
+*            cl_gui_alv_grid=>mc_fc_detail,
+*            cl_gui_alv_grid=>mc_fc_expcrdata,
+*            cl_gui_alv_grid=>mc_fc_expcrdesig,
+*            cl_gui_alv_grid=>mc_fc_expcrtempl,
+*            cl_gui_alv_grid=>mc_fc_expmdb,
+*            cl_gui_alv_grid=>mc_fc_extend,
+*            cl_gui_alv_grid=>mc_fc_f4,
+*            cl_gui_alv_grid=>mc_fc_filter,
+*            cl_gui_alv_grid=>mc_fc_find,
+*            cl_gui_alv_grid=>mc_fc_fix_columns,
+*            cl_gui_alv_grid=>mc_fc_graph,
+*            cl_gui_alv_grid=>mc_fc_help,
+*            cl_gui_alv_grid=>mc_fc_info,
+*            cl_gui_alv_grid=>mc_fc_load_variant,
+*            cl_gui_alv_grid=>mc_fc_loc_copy,          " 행 카피.
+*            cl_gui_alv_grid=>mc_fc_html,
+*            cl_gui_alv_grid=>mc_fc_loc_copy_row,      " 행 카피.
+*            cl_gui_alv_grid=>mc_fc_loc_cut,           " 가위.
+*            cl_gui_alv_grid=>mc_fc_loc_delete_row,    " 행삭제.
+*            cl_gui_alv_grid=>mc_fc_loc_insert_row,    " 행삽입.
+*            cl_gui_alv_grid=>mc_fc_loc_move_row,
+*            cl_gui_alv_grid=>mc_fc_loc_append_row,    " 라인생성.
+*            cl_gui_alv_grid=>mc_fc_loc_paste,         " 겹쳐쓰기.
+*            cl_gui_alv_grid=>mc_fc_loc_paste_new_row, " 겹쳐쓰기.
+*            cl_gui_alv_grid=>mc_fc_maintain_variant,
+*            cl_gui_alv_grid=>mc_fc_maximum,
+*            cl_gui_alv_grid=>mc_fc_minimum,
+*            cl_gui_alv_grid=>mc_fc_pc_file,
+*            cl_gui_alv_grid=>mc_fc_print,
+*            cl_gui_alv_grid=>mc_fc_print_back,
+*            cl_gui_alv_grid=>mc_fc_print_prev,
+*            cl_gui_alv_grid=>mc_fc_refresh,
+*            cl_gui_alv_grid=>mc_fc_reprep,
+*            cl_gui_alv_grid=>mc_fc_save_variant,
+*            cl_gui_alv_grid=>mc_fc_select_all,
+*            cl_gui_alv_grid=>mc_fc_send,
+*            cl_gui_alv_grid=>mc_fc_separator,
+*            cl_gui_alv_grid=>mc_fc_sort,
+*            cl_gui_alv_grid=>mc_fc_sort_asc,
+*            cl_gui_alv_grid=>mc_fc_sort_dsc,
+*            cl_gui_alv_grid=>mc_fc_subtot,
+*            cl_gui_alv_grid=>mc_fc_sum,
+*            cl_gui_alv_grid=>mc_fc_to_office,
+*            cl_gui_alv_grid=>mc_fc_to_rep_tree,
+*            cl_gui_alv_grid=>mc_fc_unfix_columns,
+*            cl_gui_alv_grid=>mc_fc_views,
+*            cl_gui_alv_grid=>mc_fc_view_crystal,
+*            cl_gui_alv_grid=>mc_fc_view_excel,
+*            cl_gui_alv_grid=>mc_fc_view_grid,
+*            cl_gui_alv_grid=>mc_fc_word_processor.
+ENDFORM.                    " SET_EXCLUDE
+*&---------------------------------------------------------------------*
+*&      Form  APPEND_EXCLUDE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_CL_GUI_ALV_GRID=>MC_FC_EXCL_AL  text
+*----------------------------------------------------------------------*
+FORM append_exclude  USING   ps_exclude LIKE gs_exclude.
+  APPEND ps_exclude TO gt_exclude.
+ENDFORM.                    " APPEND_EXCLUDE
+*&---------------------------------------------------------------------*
+*&      Form  SET_EVENT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_event .
+  CREATE OBJECT go_event_receiver.
+
+  SET HANDLER: go_event_receiver->handle_double_click  FOR go_grid,
+               go_event_receiver->handle_hotspot_click FOR go_grid,
+               go_event_receiver->handle_toolbar       FOR go_grid,
+               go_event_receiver->handle_user_command  FOR go_grid,
+               go_event_receiver->handle_data_changed  FOR go_grid.
+
+  CALL METHOD go_grid->register_edit_event
+    EXPORTING
+      i_event_id = go_grid->mc_evt_modified.
+  " mc_evt_modified / mc_evt_enter
+ENDFORM.                    " SET_EVENT
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+  CLEAR: gs_variant.
+  gs_variant-report = sy-repid.
+  gs_variant-username = sy-uname.
+
+  CALL METHOD go_grid->set_table_for_first_display
+    EXPORTING
+*      i_buffer_active               =
+*      i_bypassing_buffer            =
+*      i_consistency_check           =
+*      i_structure_name              =
+      is_variant                    = gs_variant
+      i_save                        = 'A' " X(global)/U(user)/A(all)/''
+      i_default                     = 'X' " X(enable)/''(disable)
+      is_layout                     = gs_layout
+*      is_print                      =
+*      it_special_groups             =
+      it_toolbar_excluding          = gt_exclude
+*      it_hyperlink                  =
+*      it_alv_graphics               =
+*      it_except_qinfo               =
+*      ir_salv_adapter               =
+    CHANGING
+      it_outtab                     = gt_disp
+      it_fieldcatalog               = gt_fieldcat
+*      it_sort                       = gt_sort
+*      it_filter                     =
+*    EXCEPTIONS
+*      invalid_parameter_combination = 1
+*      program_error                 = 2
+*      too_many_lines                = 3
+*      others                        = 4
+          .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+ENDFORM.                    " DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*&      Form  REFRESH_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM refresh_alv .
+  CALL METHOD go_grid->refresh_table_display
+*    EXPORTING
+*      is_stable      = gs_stable
+*      i_soft_refresh =
+*    EXCEPTIONS
+*      finished       = 1
+*      others         = 2
+          .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+ENDFORM.                    " REFRESH_ALV
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_DOUBLE_CLICK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_ROW  text
+*      -->P_E_COLUMN  text
+*----------------------------------------------------------------------*
+FORM handle_double_click  USING    ps_row    TYPE lvc_s_row
+                                   ps_column TYPE lvc_s_col.
+
+ENDFORM.                    " HANDLE_DOUBLE_CLICK
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_HOTSPOT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_ROW_ID  text
+*      -->P_E_COLUMN_ID  text
+*----------------------------------------------------------------------*
+FORM handle_hotspot  USING    ps_row_id    TYPE lvc_s_row
+                              ps_column_id TYPE lvc_s_col.
+
+ENDFORM.                    " HANDLE_HOTSPOT
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_TOOLBAR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_OBJECT  text
+*----------------------------------------------------------------------*
+FORM handle_toolbar  USING    po_object
+                          TYPE REF TO CL_ALV_EVENT_TOOLBAR_SET.
+
+ENDFORM.                    " HANDLE_TOOLBAR
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_UCOM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_UCOMM  text
+*----------------------------------------------------------------------*
+FORM handle_ucom  USING    pv_ucomm TYPE sy-ucomm.
+
+ENDFORM.                    " HANDLE_UCOM
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_DATA_CHANGED
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_ER_DATA_CHANGED  text
+*----------------------------------------------------------------------*
+FORM handle_data_changed  USING    po_data_changed
+                               TYPE REF TO cl_alv_changed_data_protocol.
+
+ENDFORM.                    " HANDLE_DATA_CHANGED
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CHECK_CHANGED_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM alv_check_changed_data .
+  DATA: lv_valid, lv_refresh.
+
+  CALL METHOD go_grid->check_changed_data
+*    IMPORTING
+*      e_valid   = lv_valid
+*    CHANGING
+*      c_refresh = 'X'
+      .
+ENDFORM.                    " ALV_CHECK_CHANGED_DATA

@@ -1,0 +1,48 @@
+FORM CALL_SMARTFORMS .
+
+  DATA : LV_FORM    TYPE RS38L_FNAM,
+         LS_PARAM   TYPE SSFCTRLOP,
+         LS_COMPO   TYPE SSFCOMPOP,
+         LT_OTFDATA TYPE SSFCRESCL.
+
+  CLEAR : LS_PARAM , LS_COMPO.
+  LS_PARAM-NO_DIALOG = 'X'.
+  LS_PARAM-GETOTF    = 'X'.
+
+* 해당 하는 스마프톰의 FUNCTION 가져오기
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      FORMNAME           = 'ZFI_FORM002' "[FI] 전표 출력 스마트폼
+    IMPORTING
+      FM_NAME            = LV_FORM
+    EXCEPTIONS
+      NO_FORM            = 1
+      NO_FUNCTION_MODULE = 2
+      OTHERS             = 3.
+
+  CALL FUNCTION LV_FORM
+    EXPORTING
+      CONTROL_PARAMETERS = LS_PARAM
+      OUTPUT_OPTIONS     = LS_COMPO
+    IMPORTING
+      JOB_OUTPUT_INFO    = LT_OTFDATA
+    TABLES
+      GT_HEAD            = GT_PRINT_H
+      GT_ITEM            = GT_PRINT_I
+    EXCEPTIONS
+      FORMATTING_ERROR   = 1
+      INTERNAL_ERROR     = 2
+      SEND_ERROR         = 3
+      USER_CANCELED      = 4
+      OTHERS             = 5.
+
+* PDF 미리보기
+  CALL FUNCTION 'SSFCOMP_PDF_PREVIEW'
+    EXPORTING
+      I_OTF                    = LT_OTFDATA-OTFDATA
+    EXCEPTIONS
+      CONVERT_OTF_TO_PDF_ERROR = 1
+      CNTL_ERROR               = 2
+      OTHERS                   = 3.
+
+ENDFORM.

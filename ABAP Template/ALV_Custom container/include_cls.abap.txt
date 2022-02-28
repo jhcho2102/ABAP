@@ -1,0 +1,49 @@
+CLASS lcl_event_receiver DEFINITION.
+  PUBLIC SECTION.
+    METHODS: handle_double_click
+      FOR EVENT double_click OF cl_gui_alv_grid
+          IMPORTING e_row
+                    e_column.
+
+    METHODS: handle_hotspot_click
+      FOR EVENT hotspot_click OF cl_gui_alv_grid
+          IMPORTING e_row_id
+                    e_column_id.
+
+    METHODS: handle_toolbar
+      FOR EVENT toolbar OF cl_gui_alv_grid
+          IMPORTING e_object
+                    e_interactive.
+
+    METHODS: handle_user_command
+      FOR EVENT user_command OF cl_gui_alv_grid
+          IMPORTING e_ucomm.
+
+    METHODS: handle_data_changed
+      FOR EVENT data_changed OF cl_gui_alv_grid
+          IMPORTING er_data_changed.
+ENDCLASS.
+
+CLASS lcl_event_receiver IMPLEMENTATION.
+  METHOD handle_double_click.
+    PERFORM handle_double_click USING e_row
+                                      e_column.
+  ENDMETHOD.
+
+  METHOD handle_hotspot_click.
+    PERFORM handle_hotspot USING e_row_id
+                                 e_column_id.
+  ENDMETHOD.
+
+  METHOD handle_toolbar.
+    PERFORM handle_toolbar USING e_object.
+  ENDMETHOD.
+
+  METHOD handle_user_command.
+    PERFORM handle_ucom USING e_ucomm.
+  ENDMETHOD.
+
+  METHOD handle_data_changed.
+    PERFORM handle_data_changed USING er_data_changed.
+  ENDMETHOD.
+ENDCLASS.

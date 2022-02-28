@@ -1,0 +1,74 @@
+*&--------------------------------------------------*
+*& TOP ---------------------------------------------*
+*&--------------------------------------------------*
+DATA: go_excel  TYPE ole2_object,
+			go_base   TYPE ole2_object,
+			go_books  TYPE ole2_object,
+			go_book   TYPE ole2_object,
+			go_sheet  TYPE ole2_object,
+			go_cells  TYPE ole2_object,
+			go_column TYPE ole2_object,
+			go_prop   TYPE ole2_object,
+			go_mode   TYPE ole2_object.
+*&--------------------------------------------------*
+*& FORM --------------------------------------------*
+*&--------------------------------------------------*
+CREATE OBJECT go_excel 'EXCEL.APPLICATION'.
+SET PROPERTY OF go_excel 'Visible' = 0.
+
+GET PROPERTY OF go_excel 'Workbooks' = go_books.
+CALL METHOD OF go_books 'Add' = go_book.
+
+GET PROPERTY OF go_excel 'ErrorCheckingOptions' = go_prop.
+SET PROPERTY OF go_prop 'NumberAsText' = 0.
+
+GET PROPERTY OF go_book 'Sheets' = go_sheet
+	EXPORTING
+		#1 = 1.
+*&--------------------------------------------------*
+DATA: lv_data(1500) TYPE c,
+			lt_data LIKE TABLE OF lv_data. " clipboard에 복사할 데이터
+
+LOOP AT gt_data INTO gs_data.
+	CONCATENATE lv_data gs_data INTO lv_data
+			SEPARATED BY cl_abap_char_utilities=>horizontal_tab.
+ENDLOOP.
+SHIFT lv_data BY 1 PLACES LEFT.
+APPEND lv_data TO lt_data.
+CLEAR: lv_data.
+
+CALL METHOD cl_gui_frontend_services=>clipboard_export
+	IMPORTING
+		data  = lt_data
+	CHANGING
+		rc    = gv_rc.
+
+CALL METHOD OF go_sheet 'Cells' = go_cells
+	EXPORTING
+		#1 = 1 " ROW
+		#2 = 1 " COLUMN
+CALL METHOD OF go_cells 'SELECT'
+CALL METHOD OF go_sheet 'PASTE'.
+
+CALL METHOD OF go_sheet 'Columns' = go_cells
+	EXPORTING
+		#1 = 11.
+SET PROPERTY OF go_cells 'NumberFormat' = '#,##0'.
+*&--------------------------------------------------*
+GET PROPERTY OF go_sheet 'Columns' = go_cells.
+CALL METHOD OF go_cells 'AutoFit'.
+
+CALL METHOD OF go_sheet 'Protect'
+	EXPORTING
+		#1 = lv_password.
+
+CALL METHOD OF go_book 'SaveAs'
+	EXPORTING
+		#1 = gv_fullpath.
+
+IF sy-subrc = 0.
+	CALL METHOD OF go_book 'CLOSE'.
+	CALL METHOD OF go_excel 'QUIT'.
+	FREE OBJECT: go_excel, go_books, go_book, go_sheet, go_cells,
+							 go_column, go_base, go_prop, go_mode.
+ENDIF.

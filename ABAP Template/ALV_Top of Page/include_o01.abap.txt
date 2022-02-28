@@ -1,0 +1,27 @@
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+  SET TITLEBAR '0100'.
+ENDMODULE.                 " STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+  IF go_grid IS INITIAL.
+    PERFORM create_object.
+    PERFORM set_fieldcat.
+    PERFORM set_layout.
+    PERFORM set_sort.
+    PERFORM set_exclude.
+    PERFORM set_event.
+    PERFORM display_alv.
+  ELSE.
+    PERFORM refresh_alv.
+  ENDIF.
+ENDMODULE.                 " SET_ALV_0100  OUTPUT

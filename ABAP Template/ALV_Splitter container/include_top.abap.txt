@@ -1,0 +1,33 @@
+TABLES: mara.
+*&---------------------------------------------------------------------*
+*& Screen Object
+*&---------------------------------------------------------------------*
+DATA: ok_code    TYPE sy-ucomm,
+      gv_copy    TYPE sy-ucomm.
+
+DATA: go_docking        TYPE REF TO cl_gui_docking_container,
+      go_splitter       TYPE REF TO cl_gui_splitter_container,
+      go_cont_top       TYPE REF TO cl_gui_container,
+      go_cont_body      TYPE REF TO cl_gui_container,
+      go_grid           TYPE REF TO cl_gui_alv_grid,
+      go_event_receiver TYPE REF TO lcl_event_receiver.
+
+DATA: gs_fieldcat TYPE lvc_s_fcat,
+      gt_fieldcat TYPE lvc_t_fcat,
+      gs_layout   TYPE lvc_s_layo,
+      gt_exclude  TYPE ui_functions,
+      gs_exclude  TYPE ui_func,
+      gt_sort     TYPE lvc_t_sort,
+      gs_sort     TYPE lvc_s_sort,
+      gs_variant  TYPE disvariant,
+      gs_stable   TYPE lvc_s_stbl.
+
+*&---------------------------------------------------------------------*
+*& Data Object
+*&---------------------------------------------------------------------*
+DATA: BEGIN OF gs_disp,
+        matnr TYPE mara-matnr,
+        mtart TYPE mara-mtart,
+      END   OF gs_disp.
+
+DATA gt_disp LIKE TABLE OF gs_disp.

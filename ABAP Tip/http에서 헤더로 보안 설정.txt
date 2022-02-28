@@ -1,0 +1,70 @@
+"보안관련 선언"
+data : lo_facade type ref to /IWBEP/IF_MGW_DP_INT_FACADE,
+        lt_client_headers type TIHTTPNVP.
+
+*--------------------------------------------------------------------*
+  lo_facade ?= /iwbep/if_mgw_conv_srv_runtime~get_dp_facade( ).
+  lt_client_headers = lo_facade->get_request_header( ).
+
+  CALL FUNCTION 'ZBIZ_CM_CHECK_HEADER'
+   IMPORTING
+     ES_MESSAGE       = LS_MESSAGE
+    TABLES
+      LT_CLINET        = lt_client_headers.
+
+*--------------------------------------------------------------------*
+*--------------------------------------------------------------------*
+
+
+FUNCTION ZBIZ_CM_CHECK_HEADER .
+*"----------------------------------------------------------------------
+*"*"Local interface:
+*"  IMPORTING
+*"     VALUE(LT_DATA) TYPE REF TO  /IWBEP/IF_MGW_CONV_SRV_RUNTIME
+*"       OPTIONAL
+*"  EXPORTING
+*"     VALUE(ES_MESSAGE) TYPE  ZBIZFIS008
+*"  TABLES
+*"      LT_CLINET TYPE  TIHTTPNVP
+*"----------------------------------------------------------------------
+
+  DATA : ls_client_headers TYPE LINE OF TIHTTPNVP.
+  data : lv_authid(100) type c,
+         lv_SYSID(100) type c.
+
+  DATA : LT_CMT TYPE TABLE OF ZBIZCMT001.
+
+  CLEAR LS_CLIENT_HEADERS.
+  READ TABLE LT_CLINET INTO ls_client_headers
+                               WITH KEY NAME = 'authid'.
+  IF SY-SUBRC EQ 0.
+    lv_authid = ls_client_headers-VALUE.
+  ENDIF.
+
+  CLEAR LS_CLIENT_HEADERS.
+  READ TABLE LT_CLINET INTO ls_client_headers
+                               WITH KEY NAME = 'sysid'.
+  IF SY-SUBRC EQ 0.
+    lv_SYSID = ls_client_headers-VALUE.
+  ENDIF.
+
+  SELECT * FROM ZBIZCMT001
+    INTO TABLE LT_CMT
+    WHERE SYSID = LV_SYSID
+      AND AUTHID = LV_AUTHID.
+
+  IF LT_CMT IS INITIAL.
+
+  ES_MESSAGE-MSGTY = 'E'.
+  ES_MESSAGE-MSGTX = text-m01.
+
+
+  ELSE.
+
+  ES_MESSAGE-MSGTY = 'S'.
+
+  ENDIF.
+
+
+
+ENDFUNCTION.

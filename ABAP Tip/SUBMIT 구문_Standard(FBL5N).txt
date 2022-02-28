@@ -1,0 +1,190 @@
+FUNCTION ZSD_RFC_ACC_OPEN.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(I_BUKRS) TYPE  CHAR04
+*"     VALUE(I_POSTDATE_FR) TYPE  DATS
+*"     VALUE(I_POSTDATE_TO) TYPE  DATS
+*"  EXPORTING
+*"     VALUE(E_TYPE) TYPE  CHAR01
+*"     VALUE(E_MSG) TYPE  CHAR100
+*"  TABLES
+*"      TE_DATA STRUCTURE  ZSDFAST400S
+*"----------------------------------------------------------------------
+*&---------------------------------------------------------------------*
+*&  GERP Open item 데이터 FasT 전송
+*&---------------------------------------------------------------------*
+*&                    MODIFICATION LOG                                 *
+*&---------------------------------------------------------------------*
+*& Date.           Author.        description.                         *
+*&---------------------------------------------------------------------*
+*& 2021.11.17      DSD018         Initial
+*&---------------------------------------------------------------------*
+  DATA: lv_bukrs TYPE t001-bukrs,
+        lt_bsid  TYPE TABLE OF bsid.
+
+  DATA: lv_trg(30) TYPE c,
+        lv_sign    TYPE string.
+
+  DATA: lv_lines(10) TYPE c.
+
+  DATA: ld_fbl5n TYPE REF TO DATA,
+        ld_lines TYPE REF TO DATA.
+
+*  " 회사코드 initial check
+  IF i_bukrs IS INITIAL.
+    e_type = 'E'.
+    e_msg = TEXT-m03.
+    EXIT.
+  ELSE.
+    SELECT SINGLE bukrs
+      INTO lv_bukrs FROM t001 WHERE bukrs = i_bukrs.
+    IF sy-subrc NE 0.
+      e_type = 'E'.
+      e_msg = TEXT-m04.
+      EXIT.
+    ENDIF.
+  ENDIF.
+
+*  " 전기일 initial check
+  IF i_postdate_fr IS INITIAL OR i_postdate_to IS INITIAL.
+    e_type = 'E'.
+    e_msg = TEXT-m06.
+    EXIT.
+  ENDIF.
+*  " 전기일 from / to 비교
+  IF i_postdate_fr > i_postdate_to.
+    e_type = 'E'.
+    e_msg = TEXT-m07.
+    EXIT.
+  ENDIF.
+
+*  " Range 설정
+  CLEAR: s_bukrs_o, s_bukrs_o[].
+  s_bukrs_o-sign = 'I'.
+  s_bukrs_o-option = 'EQ'.
+  s_bukrs_o-low = i_bukrs.
+  APPEND s_bukrs_o.
+
+  CLEAR: s_budat, s_budat[].
+  s_budat-sign = 'I'.
+  s_budat-option = 'BT'.
+  s_budat-low = i_postdate_fr.
+  s_budat-high = i_postdate_to.
+  APPEND s_budat.
+
+*  데이터 존재 유무 확인
+  " BSID : Cust. Open item
+  SELECT bukrs budat bstat
+    INTO CORRESPONDING FIELDS OF TABLE lt_bsid
+    FROM bsid
+    WHERE bukrs IN s_bukrs_o
+      AND budat IN s_budat
+      AND bstat NOT IN ('S', 'V', 'W', 'Z').
+
+  " BSAD : Cust. Cleared item
+  SELECT bukrs budat bstat
+    APPENDING CORRESPONDING FIELDS OF TABLE lt_bsid
+    FROM bsad
+    WHERE bukrs IN s_bukrs_o
+      AND budat IN s_budat
+      AND bstat NOT IN ('S', 'V', 'W', 'Z').
+
+  IF lt_bsid IS INITIAL.
+    e_type = 'E'.
+    e_msg = TEXT-m05.
+    EXIT.
+  ENDIF.
+
+*  Submit
+  cl_salv_bs_runtime_info=>set( EXPORTING display  = abap_false
+                                          metadata = abap_false
+                                          data     = abap_true ).
+
+  SUBMIT RFITEMAR WITH DD_BUKRS IN s_bukrs_o
+                  WITH X_AISEL = 'X'
+                  WITH SO_BUDAT IN s_budat
+                  WITH X_NORM = 'X'
+                  WITH X_SHBV = 'X'
+                  WITH X_MERK = SPACE
+                  WITH X_PARK = SPACE
+                  WITH X_APAR = SPACE
+                  AND RETURN.
+
+  TRY.
+    cl_salv_bs_runtime_info=>get_data_ref( IMPORTING r_data =
+                                                             ld_fbl5n ).
+    IF ld_fbl5n IS NOT INITIAL.
+      ASSIGN ld_fbl5n->* TO <ft_fbl5n>.
+    ENDIF.
+
+    CATCH cx_salv_bs_sc_runtime_info.
+      e_type = 'E'.
+      e_msg = TEXT-m08.
+      EXIT.
+  ENDTRY.
+
+  IF <ft_fbl5n> IS NOT INITIAL.
+    CREATE DATA ld_lines LIKE LINE OF <ft_fbl5n>.
+    ASSIGN ld_lines->* TO <fs_fbl5n>.
+
+    LOOP AT <ft_fbl5n> ASSIGNING <fs_fbl5n>.
+      _map_te_data:
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'SYM_AUGP'  'STATUS',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'U_KUNNR'   'CUST_CD',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'XREF3'     'REF_KEY_3',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'HKONT'     'GL_CD',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'BELNR'     'DOC_NO',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'ZUONR'     'ASSIGNMENT',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'BLART'     'TYPE',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'ZTERM'     'PAYT',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'GSBER'     'BUS_AREA_CD',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'ICO_DUE'   'DD',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'U_PAOBJNR' 'SG',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'AUGBL'     'CLEARING_DOC',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'SGTXT'     'TEXT',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'BLDAT'     'DOC_DT',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'BUDAT'     'POSTING_DT',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'FAEDT'     'NET_DUE_DT',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'AUGDT'     'CLEARING_DT',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'VERZN'     'ARREAR',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'WRSHB'     'AMT_IN_DOM_CURR',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'WAERS'     'CURR_CD',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'DMSHB'     'AMT_IN_LOC_CURR',
+        <fs_fbl5n> <fs_fvalue> 'TE_DATA' 'HWAER'     'LCURR'.
+
+      APPEND te_data.
+      CLEAR: te_data.
+    ENDLOOP.
+
+    IF te_data[] is not INITIAL.
+      e_type = 'S'.
+
+      lv_lines = lines( te_data ).
+      CONCATENATE lv_lines TEXT-m02 INTO e_msg.
+    ENDIF.
+  ENDIF.
+ENDFUNCTION.
+
+*&---------------------------------------------------------------------*
+  DEFINE _map_te_data.
+    ASSIGN COMPONENT &4 OF STRUCTURE &1 TO &2.
+
+    CONCATENATE &3 '-' &5 INTO lv_trg.
+    ASSIGN (lv_trg) TO <fs_trg>.
+
+    IF sy-subrc EQ 0.
+      IF &4 EQ 'VERZN' OR &4 EQ 'WRSHB' OR &4 EQ 'DMSHB'.
+        lv_sign = &2.
+
+        CALL FUNCTION 'CLOI_PUT_SIGN_IN_FRONT'
+          CHANGING
+            VALUE         = lv_sign.
+
+        <fs_trg> = lv_sign.
+      ELSE.
+        <fs_trg> = &2.
+      ENDIF.
+    ENDIF.
+  END-OF-DEFINITION.
+*&---------------------------------------------------------------------*

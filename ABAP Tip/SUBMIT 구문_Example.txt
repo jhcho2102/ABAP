@@ -1,0 +1,178 @@
+
+DATA : BEGIN OF GS_DISP,
+  HKONT TYPE RFPOS-HKONT,
+  ZUONR TYPE RFPOS-ZUONR,
+  BELNR TYPE  RFPOS-BELNR,
+  GSBER TYPE  RFPOS-GSBER,
+  BLART TYPE  RFPOS-BLART,
+  BLDAT TYPE  RFPOS-BLDAT,
+  BSCHL TYPE  RFPOS-BSCHL,
+  DMSHB TYPE  RFPOS-DMSHB,
+  HWAER TYPE  RFPOS-HWAER,
+  MWSKZ TYPE  RFPOS-MWSKZ,
+            END OF GS_DISP.
+
+DATA : GT_DISP LIKE TABLE OF GS_dISP.
+
+
+DATA : FS_FBL3N TYPE REF TO DATA,
+           LIT_LINE TYPE REF TO DATA.
+
+
+FIELD-SYMBOLS: <FT_FBL3N> TYPE ANY TABLE,
+               <FS_FBL3N> TYPE any,
+               <LS_FVALUE> TYPE any.
+
+I_BUKRS = '1000'.
+
+cl_salv_bs_runtime_info=>set( EXPORTING display  = abap_false
+                                        metadata = abap_false
+                                        data     = abap_true ).
+
+RANGES : S_HKONT FOR BSIS-HKONT,
+                S_BUDAT FOR BKPF-BUDAT.
+
+CLEAR : S_HKONT, S_BUDAT.
+
+S_HKONT-SIGN = 'I'.
+S_HKONT-OPTION = 'BT'.
+S_HKONT-LOW = '1101001'.
+S_HKONT-HIGH = '1101017'.
+APPEND S_HKONT.
+
+  SUBMIT rfitemgl WITH sd_bukrs EQ i_bukrs
+                                 WITH SD_SAKNR IN  s_hkont
+*                                WITH sd_hkont eq '1101017'
+                                 WITH sd_budat IN s_budat
+                                 WITH x_opsel = space
+                                 WITH x_clsel = space
+                                 WITH x_aisel = 'X'
+                                 AND RETURN.
+
+*  DATA : LIST TYPE ABAPLIST OCCURS 0.
+
+*call function 'LIST_FROM_MEMORY'
+*tables
+*listobject = list
+*exceptions
+*not_found = 1
+*others = 2.
+*
+*
+*
+*call function 'WRITE_LIST'
+*exporting
+*write_only = ' '
+*tables
+*listobject = list
+*exceptions
+*empty_list = 1
+*others = 2.
+**
+*BREAK-POINT.
+
+TRY.
+    cl_salv_bs_runtime_info=>get_data_ref( IMPORTING r_data = FS_FBL3N ).
+    IF FS_FBL3N IS NOT INITIAL.
+      ASSIGN FS_FBL3N->* TO <FT_FBL3N>.
+    endif.
+  CATCH cx_salv_bs_sc_runtime_info.
+    MESSAGE 'Unable to retrieve ALV data' TYPE 'E'.
+ENDTRY.
+
+IF <FT_FBL3N> IS NOT INITIAL.
+        CREATE DATA lit_line LIKE LINE OF <FT_FBL3N>.
+        ASSIGN lit_line->* TO <FS_FBL3N>.
+
+
+LOOP AT <FT_FBL3N> ASSIGNING <FS_FBL3N>.
+          ASSIGN COMPONENT 'HKONT' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-HKONT = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'ZUONR' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-ZUONR = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'BELNR' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-BELNR = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'GSBER' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-GSBER = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'BLART' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-BLART = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'BSCHL' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-BSCHL = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'DMSHB' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-DMSHB = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'HWAER' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-HWAER = <LS_FVALUE>.
+          ENDIF.
+          ASSIGN COMPONENT 'MWSKZ' OF STRUCTURE <FS_FBL3N> TO <LS_FVALUE>.
+          IF sy-subrc EQ 0.
+            GS_DISP-MWSKZ = <LS_FVALUE>.
+          ENDIF.
+
+        APPEND GS_DISP TO GT_DISP.
+          CLEAR: GS_DISP.
+        ENDLOOP.
+
+        cl_salv_bs_runtime_info=>clear_all( ).
+
+    ENDIF.
+
+
+  DATA : LT_SEL TYPE TABLE OF RSPARAMS,
+         LS_SEL TYPE RSPARAMS.
+
+  CLEAR LS_SEL.
+  LS_SEL-SELNAME = 'S_MATNR'.
+  LS_SEL-KIND = 'S'.
+  LS_SEL-SIGN =
+  LS_SEL_OPTION =
+  LS_SEL-LOW =
+
+
+---------------------------------------------------------------------------
+
+
+    LS_SEL-SELNAME = 'PM_IDNRK'.
+    LS_SEL-KIND = 'P'.
+    LS_SEL-SIGN = 'I'.
+    LS_SEL-OPTION = 'EQ'.
+    LS_SEL-LOW = GS_DISP-MATNR.
+    APPEND LS_SEL TO LT_SEL.
+
+    CLEAR  LS_SEL.
+    LS_SEL-SELNAME = 'PM_WERKS'.
+    LS_SEL-KIND = 'P'.
+    LS_SEL-SIGN = 'I'.
+    LS_SEL-OPTION = 'EQ'.
+    LS_SEL-LOW = P_WERKS.
+    APPEND LS_SEL TO LT_SEL.
+
+    CLEAR  LS_SEL.
+    LS_SEL-SELNAME = 'PM_DATUV'.
+    LS_SEL-KIND = 'P'.
+    LS_SEL-SIGN = 'I'.
+    LS_SEL-OPTION = 'EQ'.
+    LS_SEL-LOW = P_DATUV.
+    APPEND LS_SEL TO LT_SEL.
+
+    CLEAR  LS_SEL.
+    LS_SEL-SELNAME = 'PM_DATUB'.
+    LS_SEL-KIND = 'P'.
+    LS_SEL-SIGN = 'I'.
+    LS_SEL-OPTION = 'EQ'.
+    LS_SEL-LOW = P_DATUB.
+    APPEND LS_SEL TO LT_SEL.

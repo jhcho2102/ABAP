@@ -1,0 +1,8 @@
+CALL FUNCTION 'RRBA_CONVERT_PACKED_NUMBER'
+    EXPORTING
+      i_char                     = gv_lines
+   IMPORTING
+     E_VALUE_WRITE               = gv_lines.
+
+WRITE gv_lines TO gv_lines RIGHT-JUSTIFIED.
+CONCATENATE '(엔트리 수 : ' gv_lines ')' INTO gv_title.  " PERFORM set_titlebar

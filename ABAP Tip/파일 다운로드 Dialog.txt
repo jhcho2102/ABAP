@@ -1,0 +1,33 @@
+*&--------------------------------------------------*
+*& TOP ---------------------------------------------*
+*&--------------------------------------------------*
+DATA: gv_fullpath TYPE string.
+
+*&--------------------------------------------------*
+*& FORM --------------------------------------------*
+*&--------------------------------------------------*
+CALL METHOD cl_gui_frontend_service=>file_save_dialog
+	EXPORTING
+		default_extention = 'xlsx'
+		default_filename  = lv_filename
+		file_filter       = 'EXCEL FILES (*.xls)|*.xls|EXCEL FILES (*.xlsx)|*.xlsx|'
+		prompt_on_overwrite = ''
+	CHANGING
+		filename    = lv_filename
+		path        = lv_path
+		fullpath    = gv_fullpath
+		user_action = lv_uact .  " '저장 : 0 , 그 외 <> 0
+
+IF sy-subrc <> 0 OR lv_uact <> 0.
+	" dialog 취소 등 action
+ENDIF.
+
+CALL METHOD cl_gui_frontend_service=>file_exit
+	EXPORTING
+		file = gv_fullpath
+	RECEIVING
+		result = lv_result.
+
+IF lv_result = abap_true.
+
+ENDIF.
