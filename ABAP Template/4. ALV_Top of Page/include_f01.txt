@@ -42,7 +42,7 @@ FORM create_object .
 
   CREATE OBJECT go_grid
     EXPORTING
-      i_parent = go_docking.
+      i_parent = go_cont_body.
 
   CREATE OBJECT go_dyndoc_id
     EXPORTING
