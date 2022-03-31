@@ -25,6 +25,10 @@ AT SELECTION-SCREEN OUTPUT.
 *&---------------------------------------------------------------------*
 AT SELECTION-SCREEN.
   PERFORM set_tab.
+  CASE sy-ucomm.
+    WHEN 'PUSH1'.
+*      PERFORM act_push1.
+  ENDCASE.
 
 *&---------------------------------------------------------------------*
 *& Start-of-selcetion.
