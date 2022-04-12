@@ -11,7 +11,7 @@ FORM SEND_MAIL .
     EXPORTING
       DOCUMENT_DATA                   = GS_DOC_DATA
      PUT_IN_OUTBOX                    = GV_OUTBOX
-*     SENDER_ADDRESS                   = GV_SENDER
+*     SENDER_ADDRESS                   = GV_SENDER      " 사용자 id로 자동 설정되서 별도로 지정 안해도 전송 가능.
 *     SENDER_ADDRESS_TYPE              = GV_SENDER_TYPE
      COMMIT_WORK                      = GV_COMMIT_FLG
 *   IMPORTING
