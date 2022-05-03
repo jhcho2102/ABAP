@@ -1,0 +1,229 @@
+*HTTP 연결에 필요한 참조변수
+DATA : LO_HTTP_CLIENT TYPE REF TO IF_HTTP_CLIENT.
+
+*HTTP 결과에 대한 변수
+DATA :  LV_RESPONSE TYPE STRING, "결과로 받아오는 JSON 담는 변수
+            LV_URL   TYPE STRING, "ULR 주소 담을 변수
+            LV_AUTH        TYPE STRING, "권한값 담을 변수
+            LV_INITIAL_URL TYPE STRING,
+            LV_OFFSET_URL TYPE STRING,
+            LV_VAR TYPE STRING, "요청변수
+            LV_AUTH_CON TYPE STRING,
+            LV_MSG1 TYPE STRING VALUE 'URL 접속 중',
+            LV_MSG TYPE STRING,
+            LV_PAGE TYPE STRING,
+            LV_CONT TYPE STRING,
+            LV_TOKEN TYPE STRING,
+            LV_ENDDO TYPE CHAR1,
+            LV_TABIX TYPE SY-TABIX,
+            LV_INDEX TYPE I,
+            LV_ERR TYPE NUMC3.
+
+*통신 결과값 받아올 LT_LOG 구조
+DATA :  BEGIN OF LT_LOG OCCURS 0,
+           ERR_STRING TYPE STRING,
+           RET_CODE   TYPE SY-SUBRC,
+           END OF LT_LOG.
+
+*JSON 결과의 ITEM 항복을 받아올 TYPE 선언
+TYPES : BEGIN OF TS_ITEM,
+             NO TYPE STRING,
+             CLOSEDATE TYPE STRING,
+             RPRSNTNAME TYPE STRING,
+             ENTPNAME TYPE STRING,
+             COBFLAGCODENAME TYPE STRING,
+             COBDETAILNAME TYPE STRING,
+             ENTPADDRALL TYPE STRING,
+             HPTLSYMBL TYPE STRING,
+             UNITYCOMPANYSEQ TYPE STRING,
+             TAXNO TYPE STRING,
+          END OF TS_ITEM.
+
+TYPES : LT_ITEM TYPE TABLE OF TS_ITEM WITH NON-UNIQUE DEFAULT KEY.
+DATA : LS_ITEMS TYPE TS_ITEM.
+
+*검색어 encoding을 위한 변수 선언
+DATA: LV_SEARCH TYPE STRING.
+
+*JSON의 결과를 인터널 테이블로 바꾼 결과값을 받아오는 구조
+DATA : BEGIN OF LS_JSON,
+           TOTALELEMENTS TYPE STRING,
+            PAGE TYPE STRING,
+            PAGESIZE TYPE STRING,
+            ITEMS TYPE LT_ITEM,
+          END OF LS_JSON.
+
+**********************************************************************************
+* HTTP Requset
+**********************************************************************************
+LV_INITIAL_URL = 'http://' . " 요청 URL
+LV_PAGE = 1.
+LV_OFFSET_URL = '&limit=100'. "100페이지 상한으로 가지고 오기
+
+"검색어 Encoding
+LV_SEARCH = '<검색어 입력>'.
+LV_SEARCH = CL_HTTP_UTILITY=>IF_HTTP_UTILITY~ESCAPE_URL( LV_SEARCH ) .
+CONCATENATE '&entpName=' LV_SEARCH '&cobFlagCode='P_CODE
+            INTO LV_VAR.
+
+CONCATENATE LV_INITIAL_URL LV_PAGE LV_OFFSET_URL LV_VAR INTO LV_URL.
+CONDENSE LV_URL NO-GAPS.
+
+"주어진 URL을 통해 ABAP OBJECT 생성
+  CALL METHOD CL_HTTP_CLIENT=>CREATE_BY_URL
+      EXPORTING
+        URL                = LV_URL
+      IMPORTING
+
+        CLIENT             = LO_HTTP_CLIENT
+      EXCEPTIONS
+        ARGUMENT_NOT_FOUND = 1
+        PLUGIN_NOT_ACTIVE  = 2
+        INTERNAL_ERROR     = 3
+        OTHERS             = 4.
+
+    "EXCEPTION에 대한 메시지 처리
+    IF SY-SUBRC <> 0.
+      CASE SY-SUBRC.
+        WHEN 1.
+          CONCATENATE LV_MSG1 'Argument_not_found 예외가 발생하였습니다'
+          INTO LV_MSG.
+          MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+        WHEN 2.
+          CONCATENATE LV_MSG1 '플러그인이 활성화되지 않았습니다' INTO LV_MSG.
+          MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+        WHEN 3.
+          CONCATENATE LV_MSG1 '접속과정이 만료되었습니다' INTO LV_MSG.
+          MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+        WHEN 4.
+          CONCATENATE LV_MSG1 '예외 상황이 발생하였습니다.' INTO LV_MSG.
+          MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+      ENDCASE.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+*    HTTP 통신 GET함수 사용 SETTING
+    lo_http_client->request->set_method('GET').
+
+*    GV_TOKEN에 보안토큰 세팅
+    CONCATENATE 'Bearer' gv_token into lv_token SEPARATED BY ''.
+
+  "권한토큰 HEADER에 담아서 보내기
+  CALL METHOD lo_http_client->REQUEST->SET_HEADER_FIELD
+    EXPORTING
+      NAME = 'Authorization'
+      VALUE = lv_token.
+
+  "통신 HEADER FIELD에 PROTOCOL VALUE 입력
+  CALL METHOD lo_http_client->REQUEST->SET_HEADER_FIELD
+    EXPORTING
+      NAME = '~server_protocol'
+      VALUE = 'HTTP/1.1'.
+
+  "글짜 TYPE  = 'application/json; charset = UTF-8'.로 세팅
+  LV_CONT = 'application/json; charset = UTF-8'.
+  LO_HTTP_CLIENT->REQUEST->SET_CONTENT_TYPE( CONTENT_TYPE = LV_CONT ).
+
+  "주어진 HEADER 값을 HTTP 주소로 SEND
+  CALL METHOD LO_HTTP_CLIENT->SEND
+    EXCEPTIONS
+      HTTP_COMMUNICATION_FAILURE = 1
+      HTTP_INVALID_STATE         = 2
+      HTTP_PROCESSING_FAILED     = 3
+      HTTP_INVALID_TIMEOUT       = 4
+      OTHERS                     = 5.
+
+  "SEND 실패하였을 때
+  IF SY-SUBRC NE  0.
+    CLEAR LV_MSG.
+    CASE SY-SUBRC.
+      WHEN 1.
+        CONCATENATE LV_MSG1 'HTTP CONNECTION 실패가 발생하였습니다'
+        INTO LV_MSG.
+        MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+      WHEN 2.
+        CONCATENATE LV_MSG1 'HTTP가 유효하지 않은 상태입니다'  INTO LV_MSG.
+        MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+      WHEN 3.
+        CONCATENATE LV_MSG1 'HTTP 처리에 실패하였습니다' INTO LV_MSG.
+        MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+      WHEN 4.
+        CONCATENATE LV_MSG1 'HTTP 접속 TIME OUT이 발생하였습니다.' INTO LV_MSG.
+        MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+      WHEN 5.
+        CONCATENATE LV_MSG1 '예외 상황이 발생하였습니다.' INTO LV_MSG.
+        MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+        LEAVE LIST-PROCESSING.
+    ENDCASE.
+
+  "정상적으로 읽힌 경우에 RECEIVE 로직 수행(SUBRC 가 0 일때)
+  ELSE.
+
+    CALL METHOD LO_HTTP_CLIENT->RECEIVE
+      EXCEPTIONS
+        HTTP_COMMUNICATION_FAILURE = 1
+        HTTP_INVALID_STATE         = 2
+        HTTP_PROCESSING_FAILED     = 3
+        OTHERS                     = 5.
+
+      IF SY-SUBRC NE 0.
+        CASE SY-SUBRC.
+          WHEN 1.
+            CONCATENATE LV_MSG1 'HTTP CONNECTION 실패가 발생하였습니다'
+            INTO LV_MSG.
+            MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+            LEAVE LIST-PROCESSING.
+          WHEN 2.
+            CONCATENATE LV_MSG1 'HTTP가 유효하지 않은 상태입니다'  INTO LV_MSG.
+            MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+            LEAVE LIST-PROCESSING.
+          WHEN 3.
+            CONCATENATE LV_MSG1 'HTTP 처리에 실패하였습니다' INTO LV_MSG.
+            MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+            LEAVE LIST-PROCESSING.
+          WHEN 5.
+            CONCATENATE LV_MSG1 '예외 상황이 발생하였습니다.' INTO LV_MSG.
+            MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+            LEAVE LIST-PROCESSING.
+        ENDCASE.
+      ENDIF.
+
+    "응답코드 받아오는 로직
+       CALL METHOD LO_HTTP_CLIENT->RESPONSE->GET_STATUS
+        IMPORTING
+          CODE      = LT_LOG-RET_CODE
+          REASON  = LT_LOG-ERR_STRING.
+
+        APPEND LT_LOG.
+
+        READ TABLE LT_LOG INDEX 1.
+
+  ENDIF.
+
+    IF LT_LOG-RET_CODE NE 200.
+      LV_ERR = LT_LOG-RET_CODE.
+      CONCATENATE '응답코드' LV_ERR ':'LT_LOG-ERR_STRING
+                              '이 발생하였습니다' INTO LV_MSG.
+      MESSAGE LV_MSG TYPE 'S' DISPLAY LIKE 'E'.
+      LEAVE LIST-PROCESSING.
+
+    ENDIF.
+
+*  응답코드가 200일 경우 정상적으로 API 값을 (JSON)으로 가져왔을 때
+*    -> LV_RESPONSE에 STRING 형식으로 값을 GET
+  LV_RESPONSE = LO_HTTP_CLIENT->RESPONSE->GET_CDATA( ).
+
+*  LV_RESPONSE에 담긴 JSON 형식의 파일을 INTERNAL TABLE로 변환
+  CALL METHOD CL_FDT_JSON=>JSON_TO_DATA
+      EXPORTING
+        IV_JSON = LV_RESPONSE
+      CHANGING
+        CA_DATA = LS_JSON.
