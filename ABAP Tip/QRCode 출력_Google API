@@ -1,0 +1,705 @@
+*&---------------------------------------------------------------------*
+*& Report ZCJHR0001
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zcjhr0001.
+
+************************************************************************
+* TOP.
+************************************************************************
+DATA: ok_code TYPE sy-ucomm.
+
+DATA : lv_bds_description  LIKE bapisignat-prop_value.
+* BDS handling
+CONSTANTS:
+  gc_bds_classname TYPE sbdst_classname  VALUE 'DEVC_STXD_BITMAP',
+  gc_bds_classtype TYPE sbdst_classtype  VALUE 'OT', " others
+  gc_bds_mimetype  TYPE bds_mimetp       VALUE 'application/octet-stream',
+  gc_bds_original  TYPE sbdst_doc_var_tg VALUE 'OR'.
+* Graphic handling
+CONSTANTS:
+  gc_stdtext  LIKE thead-tdobject VALUE 'TEXT',
+  gc_graphics LIKE thead-tdobject VALUE 'GRAPHICS',
+  gc_bmon     LIKE thead-tdid     VALUE 'BMON',
+  gc_bcol     LIKE thead-tdid     VALUE 'BCOL'.
+
+
+DATA: gt_mime      TYPE  w3mimetabtype.
+DATA: gt_blob      TYPE w3mimetabtype,
+      gv_blob_type TYPE w3param-cont_type,
+      gv_blob_size TYPE w3param-cont_len.
+
+DATA: gv_api_url TYPE string.
+
+DATA: gv_filename    TYPE rlgrap-filename,
+      gv_name        TYPE stxbitmaps-tdname,
+      gv_object      TYPE stxbitmaps-tdobject,
+      gv_id          TYPE stxbitmaps-tdid,
+      gv_btype       TYPE stxbitmaps-tdbtype,
+      gv_resident    TYPE stxbitmaps-resident,
+      gv_autoheight  TYPE stxbitmaps-autoheight,
+      gv_bmcomp      TYPE stxbitmaps-bmcomp,
+      gv_resolution  TYPE stxbitmaps-resolution,
+      gv_extension   TYPE rlgrap-filename,
+      gv_docid       TYPE stxbitmaps-docid.
+
+
+"Picture Control in Screen 100.
+DATA : go_igs_image_converter TYPE REF TO cl_igs_image_converter.
+
+DATA: go_picture_container TYPE REF TO cl_gui_custom_container,
+      go_picture_control   TYPE REF TO cl_gui_picture.
+
+
+TYPES : BEGIN OF ty_binary,
+          binary_field(1000) TYPE c,
+        END OF ty_binary.
+DATA : hex_tab1 TYPE TABLE OF ty_binary WITH HEADER LINE.
+
+************************************************************************
+* Selection Screen.
+************************************************************************
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
+  PARAMETERS: p_docno TYPE char10,
+              p_shpno TYPE char10.
+SELECTION-SCREEN END OF BLOCK b1.
+
+PARAMETERS: p_rb1 RADIOBUTTON GROUP rg1 DEFAULT 'X',
+            p_rb2 RADIOBUTTON GROUP rg1.
+
+************************************************************************
+* Initialization.
+************************************************************************
+INITIALIZATION.
+  gv_api_url    = 'http://api.qrserver.com/v1/create-qr-code/?size=150×150&data='.
+
+  gv_name       = 'QRCODEC01'. "name of the qrcode will be in se78 after one time running this program
+  gv_object     = 'GRAPHICS'.
+  gv_id         = 'BMAP'.
+*  gv_btype      = 'BCOL'. "If u want black and white pass bmon
+  gv_btype      = 'BMON'. "If u want black and white pass bmon
+  gv_resident   = ' '.
+  gv_autoheight = 'X'.
+  gv_bmcomp     = 'X'.
+  gv_extension  = 'BMP'.
+
+************************************************************************
+* Start-of-Selection.
+************************************************************************
+START-OF-SELECTION.
+  " HTTP GET QR Code Image.
+  PERFORM get_qrcode USING p_docno
+                           p_shpno.
+
+  " Import/Update Image to SE78.
+  PERFORM update_qrcode.
+
+  " Smart Form 출력.
+  IF p_rb1 EQ 'X'.
+    CALL SCREEN '100'.
+  ELSE.
+    PERFORM print_smartform.
+  ENDIF.
+
+
+************************************************************************
+* Subroutines.
+************************************************************************
+
+*&---------------------------------------------------------------------*
+*& Form get_qrcode
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_DOCNO
+*&      --> P_SHPNO
+*&---------------------------------------------------------------------*
+FORM get_qrcode  USING VALUE(pv_docno)
+                       VALUE(pv_shpno).
+
+  DATA: lo_http_client TYPE REF TO if_http_client.
+  DATA: lv_data_url  TYPE string.
+  DATA: lv_url  TYPE string.
+  DATA: lv_content TYPE xstring.
+  DATA: lv_str_length  TYPE i.
+
+  lv_data_url = 'http://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=1&ie=utf8&query=docno%3D'
+  && pv_docno && '+shpno%3D' && pv_shpno.
+
+  lv_data_url = CL_HTTP_UTILITY=>IF_HTTP_UTILITY~ESCAPE_URL( lv_data_url ).
+  CONCATENATE gv_api_url lv_data_url INTO lv_url.
+
+*  CONCATENATE 'https://www.lgchemcss.com/inf/infShipmentQrcodeMobile.do?shipmentId=' qr_text  INTO lv_url.
+
+  CALL METHOD cl_http_client=>create_by_url
+    EXPORTING
+      url                = lv_url
+    IMPORTING
+      client             = lo_http_client
+    EXCEPTIONS
+      argument_not_found = 1
+      plugin_not_active  = 2
+      internal_error     = 3
+      OTHERS             = 4.
+
+  IF sy-subrc = 0.
+*    lo_http_client->request->set_method('GET').
+    lo_http_client->send( ).
+
+    lo_http_client->receive( ).
+
+    lv_content = lo_http_client->response->get_data( ).
+
+    lo_http_client->close( ).
+
+    lv_str_length = xstrlen( lv_content ).
+
+    CALL FUNCTION 'RSFO_XSTRING_TO_MIME'
+      EXPORTING
+        c_xstring = lv_content
+        i_length  = lv_str_length
+      TABLES
+        c_t_mime  = gt_mime.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form update_qrcode
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM update_qrcode .
+  DATA: lv_content_length TYPE  i.
+
+  CREATE OBJECT go_igs_image_converter .
+
+  go_igs_image_converter->input = 'image/png'.
+  go_igs_image_converter->output = 'image/bmp'.
+  go_igs_image_converter->width = 100.
+  go_igs_image_converter->height = 100.
+
+  CALL METHOD go_igs_image_converter->set_image
+    EXPORTING
+      blob      = gt_mime
+      blob_size = lv_content_length.
+
+  CALL METHOD go_igs_image_converter->execute
+    EXCEPTIONS
+      communication_error = 1
+      internal_error      = 2
+      external_error      = 3
+      OTHERS              = 4.
+
+  IF sy-subrc = 0.
+
+    CALL METHOD go_igs_image_converter->get_image
+      IMPORTING
+        blob      = gt_blob
+        blob_size = gv_blob_size
+        blob_type = gv_blob_type.
+
+  ENDIF.
+
+  PERFORM import_bitmap_bds    USING gt_blob
+                                     gv_name
+                                     gv_object
+                                     gv_id
+                                     gv_btype
+                                     gv_extension
+                                     ' '
+                                     gv_resident
+                                     gv_autoheight
+                                     gv_bmcomp
+                           CHANGING  gv_docid
+                                     gv_resolution.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form enqueue_graphic
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_OBJECT
+*&      --> P_NAME
+*&      --> P_ID
+*&      --> P_BTYPE
+*&---------------------------------------------------------------------*
+FORM enqueue_graphic  USING    p_object
+                               p_name
+                               p_id
+                               p_btype.
+
+  CALL FUNCTION 'ENQUEUE_ESSGRABDS'
+       EXPORTING
+*           MODE_STXBITMAPS = 'E'
+            tdobject        = p_object
+            tdname          = p_name
+            tdid            = p_id
+            tdbtype         = p_btype
+*           X_TDOBJECT      = ' '
+*           X_TDNAME        = ' '
+*           X_TDID          = ' '
+*           X_TDBTYPE       = ' '
+*           _SCOPE          = '2'
+*           _WAIT           = ' '
+*           _COLLECT        = ' '
+       EXCEPTIONS
+            foreign_lock    = 1
+            OTHERS          = 2.
+
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+          WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4
+    RAISING enqueue_failed.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form dequeue_graphic
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_OBJECT
+*&      --> P_NAME
+*&      --> P_ID
+*&      --> P_BTYPE
+*&---------------------------------------------------------------------*
+FORM dequeue_graphic  USING    p_object
+                               p_name
+                               p_id
+                               p_btype.
+
+  CALL FUNCTION 'DEQUEUE_ESSGRABDS'
+       EXPORTING
+*           MODE_STXBITMAPS = 'E'
+*           X_TDOBJECT      = ' '
+*           X_TDNAME        = ' '
+*           X_TDID          = ' '
+*           X_TDBTYPE       = ' '
+*           _SCOPE          = '3'
+*           _SYNCHRON       = ' '
+*           _COLLECT        = ' '
+            tdobject        = p_object
+            tdname          = p_name
+            tdid            = p_id
+            tdbtype         = p_btype.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form import_bitmap_bds
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> BLOB
+*&      --> GI_NAME
+*&      --> GI_OBJECT
+*&      --> GI_ID
+*&      --> GI_BTYPE
+*&      --> L_EXTENSION
+*&      --> P_
+*&      --> GI_RESIDENT
+*&      --> GI_AUTOHEIGHT
+*&      --> GI_BMCOMP
+*&      <-- L_DOCID
+*&      <-- GI_RESOLUTION
+*&---------------------------------------------------------------------*
+FORM import_bitmap_bds
+        USING    p_blob       TYPE w3mimetabtype
+                 p_name           TYPE stxbitmaps-tdname
+                 p_object         TYPE stxbitmaps-tdobject
+                 p_id             TYPE stxbitmaps-tdid
+                 p_btype          TYPE stxbitmaps-tdbtype
+                 p_format         TYPE c
+                 p_title          LIKE lv_bds_description
+                 p_resident       TYPE stxbitmaps-resident
+                 p_autoheight     TYPE stxbitmaps-autoheight
+                 p_bmcomp         TYPE stxbitmaps-bmcomp
+        CHANGING p_docid          TYPE stxbitmaps-docid
+                 p_resolution     TYPE stxbitmaps-resolution.
+
+
+  DATA: lv_object_key TYPE sbdst_object_key.
+  DATA: lv_tab        TYPE ddobjname.
+
+
+  DATA: BEGIN OF l_bitmap OCCURS 0,
+          l(64) TYPE x,
+        END OF l_bitmap.
+
+  DATA: l_filename        TYPE string,
+        l_bytecount       TYPE i,
+        l_bds_bytecount   TYPE i.
+  DATA: l_color(1)        TYPE c,
+        l_width_tw        TYPE stxbitmaps-widthtw,
+        l_height_tw       TYPE stxbitmaps-heighttw,
+        l_width_pix       TYPE stxbitmaps-widthpix,
+        l_height_pix      TYPE stxbitmaps-heightpix.
+
+  DATA: lo_bds_object      TYPE REF TO cl_bds_document_set,
+        lt_bds_content     TYPE sbdst_content,
+        lt_bds_components  TYPE sbdst_components,
+        ls_bds_components  TYPE LINE OF sbdst_components,
+        lt_bds_signature   TYPE sbdst_signature,
+        ls_bds_signature   TYPE LINE OF sbdst_signature,
+        lt_bds_properties  TYPE sbdst_properties,
+        ls_bds_properties TYPE LINE OF sbdst_properties.
+
+  DATA:  ls_stxbitmaps TYPE stxbitmaps.
+
+* Enqueue
+  PERFORM enqueue_graphic USING p_object
+                                p_name
+                                p_id
+                                p_btype.
+
+* Bitmap conversion
+  CALL FUNCTION 'SAPSCRIPT_CONVERT_BITMAP_BDS'
+       EXPORTING
+            color                    = 'X'
+            format                   = p_format
+            resident                 = p_resident
+            bitmap_bytecount         = l_bytecount
+            compress_bitmap          = p_bmcomp
+       IMPORTING
+            width_tw                 = l_width_tw
+            height_tw                = l_height_tw
+            width_pix                = l_width_pix
+            height_pix               = l_height_pix
+            dpi                      = p_resolution
+            bds_bytecount            = l_bds_bytecount
+       TABLES
+            bitmap_file              = p_blob
+            bitmap_file_bds          = lt_bds_content
+       EXCEPTIONS
+            format_not_supported     = 1
+            no_bmp_file              = 2
+            bmperr_invalid_format    = 3
+            bmperr_no_colortable     = 4
+            bmperr_unsup_compression = 5
+            bmperr_corrupt_rle_data  = 6
+            OTHERS                   = 7.
+
+  IF sy-subrc <> 0.
+
+    PERFORM dequeue_graphic USING p_object
+                                  p_name
+                                  p_id
+                                  p_btype.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4
+    RAISING conversion_failed.
+
+  ENDIF.
+
+* Save bitmap in BDS
+  CREATE OBJECT lo_bds_object.
+
+  ls_bds_components-doc_count  = '1'.
+  ls_bds_components-comp_count = '1'.
+  ls_bds_components-mimetype   = gc_bds_mimetype.
+  ls_bds_components-comp_size  = l_bds_bytecount.
+  APPEND ls_bds_components TO lt_bds_components.
+
+  IF p_docid IS INITIAL.          " graphic is new
+
+    ls_bds_signature-doc_count = '1'.
+    APPEND ls_bds_signature TO lt_bds_signature.
+
+    CALL METHOD lo_bds_object->create_with_table
+         EXPORTING
+              classname  = gc_bds_classname
+              classtype  = gc_bds_classtype
+              components = lt_bds_components
+              content    = lt_bds_content
+         CHANGING
+              signature  = lt_bds_signature
+              object_key = lv_object_key
+         EXCEPTIONS
+              OTHERS     = 1.
+
+    IF sy-subrc <> 0.
+
+      PERFORM dequeue_graphic USING p_object
+                                    p_name
+                                    p_id
+                                    p_btype.
+*      message e285 with p_name  'BDS'.
+
+    ENDIF.
+
+    READ TABLE lt_bds_signature INDEX 1 INTO ls_bds_signature
+    TRANSPORTING doc_id.
+
+    IF sy-subrc = 0.
+
+      p_docid = ls_bds_signature-doc_id.
+
+    ELSE.
+
+      PERFORM dequeue_graphic USING p_object
+                                    p_name
+                                    p_id
+                                    p_btype.
+*      message e285 with p_name 'BDS'.
+
+    ENDIF.
+
+  ELSE.                " graphic already exists
+
+********* read object_key for faster access *****
+   CLEAR lv_object_key.
+   SELECT SINGLE * FROM stxbitmaps INTO ls_stxbitmaps
+       WHERE tdobject = p_object
+         AND tdid     = p_id
+         AND tdname   = p_name
+         AND tdbtype  = p_btype.
+
+   SELECT SINGLE tabname FROM bds_locl INTO lv_tab
+      WHERE classname = gc_bds_classname
+         AND classtype = gc_bds_classtype.
+
+
+   IF sy-subrc = 0.
+
+     SELECT SINGLE object_key FROM (lv_tab) INTO lv_object_key
+       WHERE loio_id = ls_stxbitmaps-docid+10(32)
+         AND classname = gc_bds_classname
+           AND classtype = gc_bds_classtype.
+
+   ENDIF.
+
+******** read object_key end ********************
+
+    CALL METHOD lo_bds_object->update_with_table
+         EXPORTING
+              classname  = gc_bds_classname
+              classtype  = gc_bds_classtype
+              object_key = lv_object_key
+              doc_id     = p_docid
+              doc_ver_no = '1'
+              doc_var_id = '1'
+         CHANGING
+              components = lt_bds_components
+              content    = lt_bds_content
+         EXCEPTIONS
+              nothing_found = 1
+              OTHERS        = 2.
+
+    IF sy-subrc = 1.   " inconsistency stxbitmaps - bds; repeat check in
+
+      ls_bds_signature-doc_count = '1'.
+      APPEND ls_bds_signature TO lt_bds_signature.
+
+      CALL METHOD lo_bds_object->create_with_table
+           EXPORTING
+                classname  = gc_bds_classname
+                classtype  = gc_bds_classtype
+                components = lt_bds_components
+                content    = lt_bds_content
+           CHANGING
+                signature  = lt_bds_signature
+                object_key = lv_object_key
+           EXCEPTIONS
+                OTHERS     = 1.
+
+      IF sy-subrc <> 0.
+        PERFORM dequeue_graphic USING p_object
+                                      p_name
+                                      p_id
+                                      p_btype.
+*        message e285 with p_name 'BDS'.
+
+      ENDIF.
+
+      READ TABLE lt_bds_signature INDEX 1 INTO ls_bds_signature
+      TRANSPORTING doc_id.
+      IF sy-subrc = 0.
+        p_docid = ls_bds_signature-doc_id.
+      ELSE.
+
+        PERFORM dequeue_graphic USING p_object
+                                      p_name
+                                      p_id
+                                      p_btype.
+
+*        message e285 with p_name 'BDS'.
+
+      ENDIF.
+
+    ELSEIF sy-subrc = 2.
+
+      PERFORM dequeue_graphic USING p_object
+                                    p_name
+                                    p_id
+                                    p_btype.
+
+*      message e285 with p_name 'BDS'.
+    ENDIF.
+
+  ENDIF.
+
+* Save bitmap header in STXBITPMAPS
+  ls_stxbitmaps-tdname     = p_name.
+  ls_stxbitmaps-tdobject   = p_object.
+  ls_stxbitmaps-tdid       = p_id.
+  ls_stxbitmaps-tdbtype    = p_btype.
+  ls_stxbitmaps-docid      = p_docid.
+  ls_stxbitmaps-widthpix   = l_width_pix.
+  ls_stxbitmaps-heightpix  = l_height_pix.
+  ls_stxbitmaps-widthtw    = l_width_tw.
+  ls_stxbitmaps-heighttw   = l_height_tw.
+  ls_stxbitmaps-resolution = p_resolution.
+  ls_stxbitmaps-resident   = p_resident.
+  ls_stxbitmaps-autoheight = p_autoheight.
+  ls_stxbitmaps-bmcomp     = p_bmcomp.
+  INSERT INTO stxbitmaps VALUES ls_stxbitmaps.
+
+  IF sy-subrc <> 0.
+
+     UPDATE stxbitmaps FROM ls_stxbitmaps.
+
+     IF sy-subrc <> 0.
+*       message e285 with p_name 'STXBITMAPS'.
+     ENDIF.
+
+  ENDIF.
+
+* Set description in BDS attributes
+
+  ls_bds_properties-prop_name  = 'DESCRIPTION'.
+  ls_bds_properties-prop_value = p_title.
+  APPEND ls_bds_properties TO lt_bds_properties.
+
+  CALL METHOD lo_bds_object->change_properties
+       EXPORTING
+            classname  = gc_bds_classname
+            classtype  = gc_bds_classtype
+            object_key = lv_object_key
+            doc_id     = p_docid
+            doc_ver_no = '1'
+            doc_var_id = '1'
+       CHANGING
+            properties = lt_bds_properties
+       EXCEPTIONS
+            OTHERS         = 1.
+
+  PERFORM dequeue_graphic USING p_object
+                                p_name
+                                p_id
+                                p_btype.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form print_smartform
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM print_smartform .
+
+  DATA: lv_fname TYPE rs38l_fnam.
+
+  "gettingt the name fm of the smartform
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+   EXPORTING
+     formname                 = 'ZLKI_SF_TEST1'
+*   VARIANT                  = ' '
+*   DIRECT_CALL              = ' '
+  IMPORTING
+    fm_name                  = lv_fname.
+* EXCEPTIONS
+*   NO_FORM                  = 1
+*   NO_FUNCTION_MODULE       = 2
+*   OTHERS                   = 3  .
+
+  DATA: gs_out_info TYPE SSFCRESCL.
+"Calling the fm of the smartform for display
+  CALL FUNCTION lv_fname
+    EXPORTING
+*    ARCHIVE_INDEX              =
+*    ARCHIVE_INDEX_TAB          =
+*    ARCHIVE_PARAMETERS         =
+*    CONTROL_PARAMETERS         =
+*    MAIL_APPL_OBJ              =
+*    MAIL_RECIPIENT             =
+*    MAIL_SENDER                =
+*    OUTPUT_OPTIONS             =
+*    USER_SETTINGS              = 'X'
+      w_name                     = 'QRCODEC01'
+    IMPORTING
+*    DOCUMENT_OUTPUT_INFO       =
+      JOB_OUTPUT_INFO            = gs_out_info .
+*    JOB_OUTPUT_OPTIONS         =
+*  EXCEPTIONS
+*    FORMATTING_ERROR           = 1
+*    INTERNAL_ERROR             = 2
+*    SEND_ERROR                 = 3
+*    USER_CANCELED              = 4
+*    OTHERS                     = 5            .
+
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+*  SET TITLEBAR '0100'.
+
+  DATA: lv_img_url     TYPE w3url.
+  DATA: lv_img_subtype TYPE w3param-cont_type.
+
+  CREATE OBJECT go_picture_container
+    EXPORTING
+      container_name = 'PICTURECONTROL'.
+
+  CREATE OBJECT go_picture_control
+    EXPORTING
+      parent = go_picture_container.
+
+  "Creating the url of the image for the display in the container in the screen
+  SPLIT gv_blob_type AT '/' INTO gv_blob_type lv_img_subtype.
+
+  CALL FUNCTION 'DP_CREATE_URL'
+    EXPORTING
+      type     = gv_blob_type
+      subtype  = lv_img_subtype
+      size     = gv_blob_size
+      lifetime = cndp_lifetime_transaction
+    TABLES
+      data     = gt_blob
+    CHANGING
+      url      = lv_img_url
+    EXCEPTIONS
+      OTHERS   = 1.
+
+  IF sy-subrc IS INITIAL.
+    CALL METHOD go_picture_control->load_picture_from_url
+      EXPORTING
+        url = lv_img_url.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
