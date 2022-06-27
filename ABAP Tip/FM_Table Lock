@@ -1,0 +1,44 @@
+**테이블 LOCK
+  DATA: LV_LOCK LIKE RSTABLE-TABNAME,
+        LT_SEQG TYPE TABLE OF SEQG3 WITH HEADER LINE.
+
+CLEAR : LT_SEQG, LT_SEQG[].
+    CALL FUNCTION 'ENQUEUE_READ'
+     EXPORTING
+       GCLIENT                     = SY-MANDT
+       GUNAME                      = '*'
+      TABLES
+        ENQ                        = LT_SEQG[]
+     EXCEPTIONS
+       COMMUNICATION_FAILURE       = 1
+       SYSTEM_FAILURE              = 2
+       OTHERS                      = 3.
+
+    CLEAR : LT_SEQG, GV_LOCK.
+    LOOP AT LT_SEQG WHERE GARG CS 'VTTK'.
+      LV_ERROR = 'X'.
+      GV_LOCK  = 'X'.
+    MESSAGE S000(OO) WITH
+  'VTTK 테이블이 잠겨있습니다. 잠시후에 시도해주세요.' DISPLAY LIKE 'E'.
+
+      RETURN.
+    ENDLOOP.
+
+    IF GV_LOCK IS INITIAL.
+      CALL FUNCTION 'ENQUEUE_E_TABLE'
+       EXPORTING
+         MODE_RSTABLE         = 'E'
+         TABNAME              = 'VTTK'
+       EXCEPTIONS
+         FOREIGN_LOCK         = 1
+         SYSTEM_FAILURE       = 2
+         OTHERS               = 3 .
+    ENDIF.
+
+
+
+**테이블 UNLOCK
+  CALL FUNCTION 'DEQUEUE_E_TABLE'
+  EXPORTING
+  mode_rstable = 'E'
+  tabname      = 'VTTK' .
