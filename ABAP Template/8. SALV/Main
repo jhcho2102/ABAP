@@ -1,0 +1,44 @@
+*&---------------------------------------------------------------------*
+*& Report ZTMPR002
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZTMPR002.
+
+INCLUDE <ICON>.
+INCLUDE ZTMPR002_CLS.
+INCLUDE ZTMPR002_TOP.
+INCLUDE ZTMPR002_CSR.
+INCLUDE ZTMPR002_F01.
+
+************************************************************************
+* Initialization.
+************************************************************************
+INITIALIZATION.
+  CREATE OBJECT go_salv.
+
+************************************************************************
+* START-OF-SELECTION.
+************************************************************************
+START-OF-SELECTION.
+
+  SELECT * FROM sflight INTO CORRESPONDING FIELDS OF TABLE @gt_disp
+    UP TO 25 ROWS.
+
+
+  go_salv->init_salv(
+    EXPORTING
+      i_pfstatus = 'SALV_STANDARD'
+      is_wa = gs_disp
+    CHANGING
+      t_table = gt_disp ).
+
+  PERFORM set_fieldcatalog.
+*  PERFORM set_sort.
+
+************************************************************************
+* END-OF-SELECTION.
+************************************************************************
+END-OF-SELECTION.
+  go_salv->display( ).
+*  go_salv->display_popup( ).
