@@ -1,0 +1,119 @@
+*&---------------------------------------------------------------------*
+*&      Form  SET_MUTIL_TASK_BSIS_FEI
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_SMODEL_T  text
+*      -->P_TASKNAME  text
+*      -->P_GT_WHERE  text
+*----------------------------------------------------------------------*
+FORM SET_MUTIL_TASK_BSIS_FEI  TABLES   P_SMODEL
+                                                   USING P_TASK_N
+P_WHERE.
+
+  DO.
+*     Active Session
+    DO.
+      IF ( G_SJOBS_C - G_RJOBS_C ) < 30 .
+        EXIT.  "Job processing finished
+      ENDIF.
+      WAIT UP TO '0.1' SECONDS.
+    ENDDO.
+*     Active Session
+
+    CALL FUNCTION 'Z_FI_0016_2_BSIS_FEI'
+      STARTING NEW TASK TASKNAME
+      DESTINATION IN GROUP 'parallel_generators'
+      PERFORMING RETURN_BSIS_FEI ON END OF TASK
+      EXPORTING
+        I_MODE                = 'T'
+*       I_PKG                 = P_PKG
+        I_TABLENAME           = G_TABLE
+        IT_FIELDS             = GT_FIELDS
+        IT_GFIELDS            = GT_GFIELDS
+        IT_WHERE              = P_WHERE
+      TABLES
+        I_PNT                 = GT_PNT
+        I_MODEL               = P_SMODEL
+      EXCEPTIONS
+        COMMUNICATION_FAILURE = 1
+        SYSTEM_FAILURE        = 2
+        RESOURCE_FAILURE      = 3.
+
+    CASE SY-SUBRC.
+      WHEN 0.
+*     Administration of asynchronous tasks
+
+        TASKNAME = TASKNAME + 1.
+        G_SJOBS_C = G_SJOBS_C + 1.
+        CLEAR G_EXCP_FLAG.  "Reset flag
+        EXIT.  "Job processing finished
+
+      WHEN 1 OR 2.
+*     Handling of communication and system failure
+        ...
+      WHEN 3.  "No resources available at present
+*     Receive reply to asynchronous RFC calls
+        IF G_EXCP_FLAG = SPACE.
+          G_EXCP_FLAG = 'X'.
+*     First attempt for RESOURCE_FAILURE handling
+          WAIT UNTIL G_RJOBS_C >= G_SJOBS_C UP TO '0.01' SECONDS.
+        ELSE.
+*     Second attempt for RESOURCE_FAILURE handling
+          WAIT UNTIL G_RJOBS_C >= G_SJOBS_C UP TO '0.1' SECONDS.
+        ENDIF.
+        IF SY-SUBRC = 0.
+          CLEAR G_EXCP_FLAG.  "Reset flag
+        ELSE.  "No replies
+
+        ENDIF.
+    ENDCASE.
+  ENDDO.
+
+ENDFORM.                    " SET_MUTIL_TASK_BSIS_FEI
+
+*&---------------------------------------------------------------------*
+*&      Form  RETURN_BSIS_FEI
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_I_PNT  text
+*      -->P_=  text
+*      -->P_GT_PNT  text
+*      -->P_EXCEPTIONS  text
+*      -->P_COMMUNICATION_FAILURE  text
+*      -->P_=  text
+*      -->P_1  text
+*      -->P_SYSTEM_FAILURE  text
+*      -->P_=  text
+*      -->P_2  text
+*      -->P_RESOURCE_FAILURE  text
+*      -->P_=  text
+*      -->P_3  text
+*----------------------------------------------------------------------*
+FORM RETURN_BSIS_FEI  USING TASKNAME.
+
+  DATA LT_BSIS LIKE ZFIS0016_3_A OCCURS 0 WITH HEADER LINE.
+  CLEAR : LT_BSIS, LT_BSIS[].
+
+  RECEIVE RESULTS FROM
+   FUNCTION 'Z_FI_0016_2_BSIS_FEI'
+     IMPORTING
+       E_LINES = G_LINES
+     TABLES
+       O_BSIS = LT_BSIS
+     EXCEPTIONS
+       COMMUNICATION_FAILURE = 1
+       SYSTEM_FAILURE        = 2
+       RESOURCE_FAILURE      = 3.
+
+  G_RJOBS_C = G_RJOBS_C + 1.  "Receiving data
+
+*  IF S_PTNAME[] IS NOT INITIAL.
+*    DELETE LT_BSIS WHERE NOT ( ZZKUNNR IN S_PTNAME OR ZZLIFNR IN
+*S_PTNAME ).
+*  ENDIF.
+
+  APPEND LINES OF LT_BSIS[] TO GT_BSIS[].
+
+ENDFORM.                    " RETURN_BSIS_FEI
