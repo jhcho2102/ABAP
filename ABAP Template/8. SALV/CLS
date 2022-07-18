@@ -1,0 +1,228 @@
+*&---------------------------------------------------------------------*
+*& Include          ZTMPR002_CLS
+*&---------------------------------------------------------------------*
+CLASS lcl_events_handle DEFINITION.
+  PUBLIC SECTION.
+    METHODS: double_click
+      FOR EVENT double_click OF cl_salv_events_table
+      IMPORTING row
+                column.
+
+    METHODS: hotspot_click
+      FOR EVENT link_click OF cl_salv_events_table
+      IMPORTING row
+                column.
+
+    METHODS: user_command
+      FOR EVENT added_function OF cl_salv_events_table
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+CLASS lcl_events_handle IMPLEMENTATION.
+  METHOD double_click.
+    PERFORM handle_double_click USING row
+                                      column.
+  ENDMETHOD.
+
+  METHOD hotspot_click.
+    PERFORM handle_hotspot_click USING row
+                                       column.
+  ENDMETHOD.
+
+  METHOD user_command.
+    PERFORM handle_ucomm USING e_salv_function.
+  ENDMETHOD.
+ENDCLASS.
+
+
+CLASS lcl_salv DEFINITION.
+************************************************************************
+* PUBLIC SECTION.
+************************************************************************
+  PUBLIC SECTION.
+    TYPES: BEGIN OF ty_s_sort,
+            position   TYPE i,
+            sequence   TYPE salv_de_sort_sequence,
+            subtotal   TYPE abap_bool,
+            group      TYPE salv_de_sort_group,
+            obligatory TYPE abap_bool,
+           END OF ty_s_sort.
+    TYPES: BEGIN OF ty_s_filter,
+            sign   TYPE salv_de_selopt_sign,
+            option TYPE salv_de_selopt_option,
+            low    TYPE salv_de_selopt_low,
+            high   TYPE salv_de_selopt_high,
+           END OF ty_s_filter.
+    TYPES: BEGIN OF ty_s_cols,
+            fieldname TYPE lvc_fname,
+            visible   TYPE abap_bool, " Default 'X'.
+            vis_tech  TYPE abap_bool, " Default ''.
+            text_l    TYPE scrtext_l,
+            text_m    TYPE scrtext_m,
+            text_s    TYPE scrtext_s,
+            color     TYPE lvc_s_colo,
+            sort      TYPE abap_bool,
+            subtot    TYPE abap_bool,
+            agg       TYPE lvc_fname,
+            filter    TYPE ty_s_filter,
+            hotspot   TYPE abap_bool,
+           END OF ty_s_cols,
+           ty_t_cols TYPE TABLE OF ty_s_cols.
+
+    " SALV Object.
+    DATA: o_salv TYPE REF TO cl_salv_table.
+    DATA: mt_columns TYPE ty_t_cols.
+
+    METHODS: init_salv
+      IMPORTING i_mode TYPE i DEFAULT 4
+                i_col_opt TYPE c DEFAULT 'X'
+                i_pfstatus TYPE sypfkey
+                is_wa TYPE ANY
+      CHANGING  t_table TYPE ANY TABLE.
+
+    METHODS: display.
+    METHODS: display_popup
+      IMPORTING i_start_col  TYPE i DEFAULT 5
+                i_end_col    TYPE i DEFAULT 200
+                i_start_line TYPE i DEFAULT 5
+                i_end_line   TYPE i DEFAULT 25.
+************************************************************************
+* PRIVATE SECTION.
+************************************************************************
+  PRIVATE SECTION.
+    DATA lo_selection TYPE REF TO cl_salv_selections.
+    DATA lo_columns   TYPE REF TO cl_salv_columns_table.
+    DATA lo_column    TYPE REF TO cl_salv_column_table.
+    DATA lo_sort      TYPE REF TO cl_salv_sorts.
+    DATA lo_agg       TYPE REF TO cl_salv_aggregations.
+    DATA lo_filter    TYPE REF TO cl_salv_filters.
+    DATA lo_function  TYPE REF TO cl_salv_functions_list.
+    DATA lo_event     TYPE REF TO cl_salv_events_table.
+    DATA lo_color     TYPE lvc_s_colo.
+
+    DATA lo_evt_handler TYPE REF TO lcl_events_handle.
+
+    METHODS: factory
+      CHANGING t_table TYPE ANY TABLE.
+
+    METHODS: set_columns.
+
+    METHODS: salv_structdescr
+      IMPORTING is_wa TYPE ANY.
+ENDCLASS.
+
+CLASS lcl_salv IMPLEMENTATION.
+  METHOD init_salv.
+    me->factory( CHANGING t_table = t_table ).
+
+    lo_selection = o_salv->get_selections( ).
+    lo_selection->set_selection_mode( i_mode ).
+
+    salv_structdescr( EXPORTING is_wa = is_wa ).
+    lo_columns = o_salv->get_columns( ).
+    lo_columns->set_optimize( i_col_opt ).
+
+    lo_sort   = o_salv->get_sorts( ).
+    lo_agg    = o_salv->get_aggregations( ).
+    lo_filter = o_salv->get_filters( ).
+
+    o_salv->set_screen_status(
+      pfstatus = i_pfstatus
+      report   = sy-repid
+      set_functions = o_salv->c_functions_all ).
+
+    lo_event = o_salv->get_event( ).
+    CREATE OBJECT lo_evt_handler.
+    SET HANDLER lo_evt_handler->double_click  FOR lo_event.
+    SET HANDLER lo_evt_handler->hotspot_click FOR lo_event.
+    SET HANDLER lo_evt_handler->user_command  FOR lo_event.
+  ENDMETHOD.
+
+  METHOD factory.
+    cl_salv_table=>factory(
+      IMPORTING
+        r_salv_table = o_salv
+      CHANGING
+        t_table = t_table ).
+  ENDMETHOD.
+
+  METHOD display.
+    me->set_columns( ).
+    o_salv->display( ).
+  ENDMETHOD.
+
+  METHOD display_popup.
+    o_salv->set_screen_popup(
+      start_column = i_start_col
+      end_column   = i_end_col
+      start_line   = i_start_line
+      end_line     = i_end_line ).
+
+    me->display( ).
+  ENDMETHOD.
+
+  METHOD salv_structdescr.
+    DATA : lo_strdescr TYPE REF TO cl_abap_structdescr,
+           lt_dfies    TYPE ddfields,
+           ls_dfies    TYPE dfies.
+    DATA: ls_cols TYPE ty_s_cols.
+    CLEAR: mt_columns.
+
+    lo_strdescr ?= cl_abap_structdescr=>describe_by_data( is_wa ).
+    lt_dfies = cl_salv_data_descr=>read_structdescr( lo_strdescr ).
+
+    LOOP AT lt_dfies INTO ls_dfies.
+      MOVE-CORRESPONDING ls_dfies TO ls_cols.
+      ls_cols-visible = 'X'.
+      ls_cols-vis_tech = ''.
+      ls_cols-text_l = ls_dfies-scrtext_l.
+      ls_cols-text_m = ls_dfies-scrtext_m.
+      ls_cols-text_s = ls_dfies-scrtext_s.
+      ls_cols-sort   = ''.
+      ls_cols-subtot = ''.
+      APPEND ls_cols TO mt_columns.
+      CLEAR ls_cols.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD set_columns.
+    DATA: ls_cols TYPE ty_s_cols.
+    LOOP AT mt_columns INTO ls_cols.
+      lo_column ?= lo_columns->get_column( ls_cols-fieldname ).
+      " 가시성 변경.
+      lo_column->set_visible( ls_cols-visible ).
+      lo_column->set_technical( ls_cols-vis_tech ).
+      " 내역변경.
+      lo_column->set_long_text( ls_cols-text_l ).
+      lo_column->set_medium_text( ls_cols-text_m ).
+      lo_column->set_short_text( ls_cols-text_s ).
+      " 색상.
+      CLEAR: lo_color.
+      lo_color-col = ls_cols-color-col.
+      lo_color-int = ls_cols-color-int.
+      lo_color-inv = ls_cols-color-inv.
+      lo_column->set_color( lo_color ).
+      " Sort.
+      IF ls_cols-sort EQ 'X'.
+        lo_sort->add_sort(
+             columnname = ls_cols-fieldname
+             subtotal   = ls_cols-subtot ).
+      ENDIF.
+      IF ls_cols-agg IS NOT INITIAL.
+        lo_agg->add_aggregation( ls_cols-agg ).
+      ENDIF.
+      " Filter.
+      IF ls_cols-filter IS NOT INITIAL.
+        lo_filter->add_filter( columnname = ls_cols-fieldname
+                               sign   = ls_cols-filter-sign
+                               option = ls_cols-filter-option
+                               low    = ls_cols-filter-low
+                               high   = ls_cols-filter-high ).
+      ENDIF.
+      " Event.
+      IF ls_cols-hotspot EQ 'X'.
+        lo_column->set_cell_type( value = if_salv_c_cell_type=>hotspot ).
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+ENDCLASS.
