@@ -1,0 +1,70 @@
+*&---------------------------------------------------------------------*
+*& Include          ZTMPR002_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_fieldcatalog
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fieldcatalog .
+  DATA ls_filter TYPE lcl_salv=>ty_s_filter.
+  FIELD-SYMBOLS: <fs> TYPE lcl_salv=>ty_s_cols.
+  LOOP AT go_salv->mt_columns ASSIGNING <fs>.
+    CLEAR: ls_filter.
+    CASE <fs>-fieldname.
+      WHEN 'MANDT'.
+        <fs>-visible = ''.
+      WHEN 'CARRID'.
+        <fs>-text_l = 'Carrid Long Text'.
+        <fs>-hotspot = 'X'.
+      WHEN 'CONNID'.
+        <fs>-sort = 'X'.
+        <fs>-subtot = 'X'.
+        <fs>-agg = 'PRICE'.
+        <fs>-filter = VALUE #( sign = 'I'  option = 'EQ'
+                               low  = '64' high   = '' ).
+      WHEN OTHERS.
+    ENDCASE.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ROW
+*&      --> COLUMN
+*&---------------------------------------------------------------------*
+FORM handle_double_click  USING    pv_row    TYPE i
+                                   pv_column TYPE lvc_fname.
+  MESSAGE |{ pv_row && pv_column }| TYPE 'I'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ROW
+*&      --> COLUMN
+*&---------------------------------------------------------------------*
+FORM handle_hotspot_click  USING   pv_row    TYPE i
+                                   pv_column TYPE lvc_fname.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_ucomm
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_SALV_FUNCTION
+*&---------------------------------------------------------------------*
+FORM handle_ucomm  USING pv_function TYPE salv_de_function.
+  CASE  pv_function.
+    WHEN ''.
+    WHEN ''.
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.
