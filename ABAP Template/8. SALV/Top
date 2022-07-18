@@ -1,0 +1,10 @@
+*&---------------------------------------------------------------------*
+*& Include          ZTMPR002_TOP
+*&---------------------------------------------------------------------*
+DATA: go_salv TYPE REF TO lcl_salv.
+
+DATA: gt_disp TYPE TABLE OF sflight,
+      gs_disp TYPE sflight.
+
+DATA: gt_cols TYPE lcl_salv=>ty_t_cols,
+      gs_cols TYPE lcl_salv=>ty_s_cols.
