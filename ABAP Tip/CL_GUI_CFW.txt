@@ -7,3 +7,7 @@ CALL METHOD cl_gui_cfw=>flush.
 CALL METHOD cl_gui_cfw=>dispatch.
 *&----------------------------------------------------------*
 *& End-User가 임의로 수행한 이벤트를 프로그램 단에서 등록한 Event로 강제 전달.
+
+cl_gui_cfw=>set_new_ok_code( EXPORTING new_code = 'ENTER' ).
+*&----------------------------------------------------------*
+*& ok_code 입력. 강제로 PAI-PBO 태우기.
