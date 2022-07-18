@@ -1,119 +1,98 @@
-*&---------------------------------------------------------------------*
-*&      Form  SET_MUTIL_TASK_BSIS_FEI
+&---------------------------------------------------------------------*
+*&      Form  GET_BASE_DATA_PARALL
 *&---------------------------------------------------------------------*
 *       text
 *----------------------------------------------------------------------*
-*      -->P_LT_SMODEL_T  text
-*      -->P_TASKNAME  text
-*      -->P_GT_WHERE  text
+*  -->  p1        text
+*  <--  p2        text
 *----------------------------------------------------------------------*
-FORM SET_MUTIL_TASK_BSIS_FEI  TABLES   P_SMODEL
-                                                   USING P_TASK_N
-P_WHERE.
+FORM GET_BASE_DATA_PARALL .
+  DATA: LV_TASKNAME(10) TYPE C.
+  DATA: LT_BASE_DATA TYPE TABLE OF TY_S_DISPLAY.
+  DATA: LV_FPERIOD TYPE SPMON,
+        LV_TPERIOD TYPE SPMON.
+  DATA: LV_LINES TYPE I.
 
-  DO.
-*     Active Session
+  LV_FPERIOD = P_GJAHR && '01'.
+  LV_TPERIOD = P_YYYYMM.
+
+  LOOP AT GT_ZFIT0241 INTO DATA(LS_ZFIT0241).
+    CLEAR: LV_TASKNAME.
+    LV_TASKNAME = 'ZFITP_' && LS_ZFIT0241-RCOMP.
     DO.
-      IF ( G_SJOBS_C - G_RJOBS_C ) < 30 .
-        EXIT.  "Job processing finished
-      ENDIF.
-      WAIT UP TO '0.1' SECONDS.
+      DO.
+        " 현재 작업중인 Process < 30 일때, 수행
+        IF ( GV_SJOBS - GV_RJOBS ) < 30 .
+          EXIT.
+        ENDIF.
+        WAIT UP TO '0.1' SECONDS.
+      ENDDO.
+
+      CALL FUNCTION 'ZFI_TP_COLLECT_PARAL_PROCESS'
+        STARTING NEW TASK LV_TASKNAME
+        DESTINATION IN GROUP GC_PARAL_GROUP
+        PERFORMING RETURN_BASE_DATA ON END OF TASK
+        EXPORTING
+          IV_RCOMP              = LS_ZFIT0241-RCOMP
+          IV_FPERIOD            = LV_FPERIOD
+          IV_TPERIOD            = LV_TPERIOD
+        TABLES
+          OT_DATA               = LT_BASE_DATA
+        EXCEPTIONS
+          COMMUNICATION_FAILURE = 1
+          SYSTEM_FAILURE        = 2
+          RESOURCE_FAILURE      = 3.
+
+      CASE SY-SUBRC.
+        WHEN 0.
+          " Administration of asynchronous tasks
+          GV_SJOBS = GV_SJOBS + 1.
+          CLEAR GV_EXCP_FLAG.  "Reset flag
+          EXIT.  "Job processing finished
+
+*        WHEN 1 OR 2.
+          " Handling of communication and system failure
+
+        WHEN 1 OR 2 OR 3.  "No resources available at present
+          " Receive reply to asynchronous RFC calls
+          IF GV_EXCP_FLAG = SPACE.
+            GV_EXCP_FLAG = 'X'.
+            " First attempt for RESOURCE_FAILURE handling
+            WAIT UNTIL GV_RJOBS >= GV_SJOBS UP TO '0.01' SECONDS.
+          ELSE.
+            " Second attempt for RESOURCE_FAILURE handling
+            WAIT UNTIL GV_RJOBS >= GV_SJOBS UP TO '0.1' SECONDS.
+          ENDIF.
+
+          IF SY-SUBRC = 0.
+            CLEAR GV_EXCP_FLAG.  "Reset flag
+          ELSE.  "No replies
+          ENDIF.
+      ENDCASE.
     ENDDO.
-*     Active Session
+  ENDLOOP.
 
-    CALL FUNCTION 'Z_FI_0016_2_BSIS_FEI'
-      STARTING NEW TASK TASKNAME
-      DESTINATION IN GROUP 'parallel_generators'
-      PERFORMING RETURN_BSIS_FEI ON END OF TASK
-      EXPORTING
-        I_MODE                = 'T'
-*       I_PKG                 = P_PKG
-        I_TABLENAME           = G_TABLE
-        IT_FIELDS             = GT_FIELDS
-        IT_GFIELDS            = GT_GFIELDS
-        IT_WHERE              = P_WHERE
-      TABLES
-        I_PNT                 = GT_PNT
-        I_MODEL               = P_SMODEL
-      EXCEPTIONS
-        COMMUNICATION_FAILURE = 1
-        SYSTEM_FAILURE        = 2
-        RESOURCE_FAILURE      = 3.
-
-    CASE SY-SUBRC.
-      WHEN 0.
-*     Administration of asynchronous tasks
-
-        TASKNAME = TASKNAME + 1.
-        G_SJOBS_C = G_SJOBS_C + 1.
-        CLEAR G_EXCP_FLAG.  "Reset flag
-        EXIT.  "Job processing finished
-
-      WHEN 1 OR 2.
-*     Handling of communication and system failure
-        ...
-      WHEN 3.  "No resources available at present
-*     Receive reply to asynchronous RFC calls
-        IF G_EXCP_FLAG = SPACE.
-          G_EXCP_FLAG = 'X'.
-*     First attempt for RESOURCE_FAILURE handling
-          WAIT UNTIL G_RJOBS_C >= G_SJOBS_C UP TO '0.01' SECONDS.
-        ELSE.
-*     Second attempt for RESOURCE_FAILURE handling
-          WAIT UNTIL G_RJOBS_C >= G_SJOBS_C UP TO '0.1' SECONDS.
-        ENDIF.
-        IF SY-SUBRC = 0.
-          CLEAR G_EXCP_FLAG.  "Reset flag
-        ELSE.  "No replies
-
-        ENDIF.
-    ENDCASE.
-  ENDDO.
-
-ENDFORM.                    " SET_MUTIL_TASK_BSIS_FEI
-
+  WAIT UNTIL GV_RJOBS >= GV_SJOBS.
+ENDFORM.
 *&---------------------------------------------------------------------*
-*&      Form  RETURN_BSIS_FEI
+*&      Form  RETURN_BASE_DATA
 *&---------------------------------------------------------------------*
 *       text
 *----------------------------------------------------------------------*
-*      -->P_I_PNT  text
-*      -->P_=  text
-*      -->P_GT_PNT  text
-*      -->P_EXCEPTIONS  text
-*      -->P_COMMUNICATION_FAILURE  text
-*      -->P_=  text
-*      -->P_1  text
-*      -->P_SYSTEM_FAILURE  text
-*      -->P_=  text
-*      -->P_2  text
-*      -->P_RESOURCE_FAILURE  text
-*      -->P_=  text
-*      -->P_3  text
 *----------------------------------------------------------------------*
-FORM RETURN_BSIS_FEI  USING TASKNAME.
+FORM RETURN_BASE_DATA USING PV_TASKNAME.
+  DATA: LT_BASE_DATA TYPE TABLE OF TY_S_DISPLAY.
 
-  DATA LT_BSIS LIKE ZFIS0016_3_A OCCURS 0 WITH HEADER LINE.
-  CLEAR : LT_BSIS, LT_BSIS[].
-
-  RECEIVE RESULTS FROM
-   FUNCTION 'Z_FI_0016_2_BSIS_FEI'
-     IMPORTING
-       E_LINES = G_LINES
+  CLEAR: LT_BASE_DATA.
+  RECEIVE RESULTS FROM FUNCTION 'ZFI_TP_COLLECT_PARAL_PROCESS'
      TABLES
-       O_BSIS = LT_BSIS
+       OT_DATA = LT_BASE_DATA
      EXCEPTIONS
        COMMUNICATION_FAILURE = 1
        SYSTEM_FAILURE        = 2
        RESOURCE_FAILURE      = 3.
 
-  G_RJOBS_C = G_RJOBS_C + 1.  "Receiving data
-
-*  IF S_PTNAME[] IS NOT INITIAL.
-*    DELETE LT_BSIS WHERE NOT ( ZZKUNNR IN S_PTNAME OR ZZLIFNR IN
-*S_PTNAME ).
-*  ENDIF.
-
-  APPEND LINES OF LT_BSIS[] TO GT_BSIS[].
-
-ENDFORM.                    " RETURN_BSIS_FEI
+  GV_RJOBS = GV_RJOBS + 1.  "Receiving data
+  GT_BASE_DATA = CORRESPONDING #( BASE ( GT_BASE_DATA )
+                                         LT_BASE_DATA  ).
+ENDFORM.
