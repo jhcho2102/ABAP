@@ -1,0 +1,35 @@
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_LAYOUT.
+  PERFORM F4_LAYOUT CHANGING P_LAYOUT.
+
+*&---------------------------------------------------------------------*
+*&      Form  F4_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_P_LAYOUT  text
+*----------------------------------------------------------------------*
+FORM F4_LAYOUT  CHANGING PV_LAYOUT.
+  DATA: LS_VARIANT TYPE DISVARIANT,
+        LV_EXIT    TYPE CHAR1.
+
+  LS_VARIANT-REPORT = SY-REPID.
+
+  CALL FUNCTION 'REUSE_ALV_VARIANT_F4'
+    EXPORTING
+      IS_VARIANT = LS_VARIANT
+      I_SAVE     = 'A'
+    IMPORTING
+      E_EXIT     = LV_EXIT
+      ES_VARIANT = LS_VARIANT
+    EXCEPTIONS
+      NOT_FOUND  = 2.
+
+  IF SY-SUBRC = 2.
+    MESSAGE ID SY-MSGID TYPE 'S' NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ELSE.
+    IF LV_EXIT EQ SPACE.
+      PV_LAYOUT = LS_VARIANT-VARIANT.
+    ENDIF.
+  ENDIF.
+ENDFORM.
