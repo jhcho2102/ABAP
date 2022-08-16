@@ -1,0 +1,4 @@
+CALL FUNCTION 'VIEW_MAINTENANCE_CALL'
+        EXPORTING
+          ACTION      = 'S' " S-display, U-update
+          VIEW_NAME   = '뷰이름'.
