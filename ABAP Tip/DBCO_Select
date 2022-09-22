@@ -1,0 +1,106 @@
+*&---------------------------------------------------------------------*
+*&      Form  DB_CONNECT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM db_connect .
+  DATA: lv_dbs_connection TYPE dbcon-con_name VALUE 'PRD'.
+  DATA: lv_emsg   TYPE REF TO cx_root.
+
+  TRY.
+      EXEC SQL.
+        CONNECT TO :lv_dbs_connection
+      ENDEXEC.
+*
+    CATCH cx_root INTO lv_emsg.
+      IF sy-subrc NE 0.
+        sy-msgv2 = lv_emsg->get_text( ).
+        MESSAGE s001 WITH text-m01 sy-msgv2 DISPLAY LIKE 'E'.
+
+        LEAVE LIST-PROCESSING.
+
+      ENDIF.
+
+      EXEC SQL.
+        SET CONNECTION DEFAULT
+      ENDEXEC.
+
+  ENDTRY.
+
+ENDFORM.  
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_DB_LINK_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_db_link_data .
+  DATA: exc_ref TYPE REF TO cx_root,
+        error_text TYPE string.
+
+  PERFORM db_connect.
+
+  TRY.
+      EXEC SQL PERFORMING APPEND_DATA.
+        SELECT bank_cd,
+               acct_no,
+               acct_txday,
+               acct_txday_seq,
+               jeokyo,
+               inout_gubun,
+               tx_amt,
+               bigo,
+               branch
+          INTO :gs_cash-bank_cd,
+               :gs_cash-acct_no,
+               :gs_cash-acct_txday,
+               :gs_cash-acct_txday_seq,
+               :gs_cash-jeokyo,
+               :gs_cash-inout_gubun,
+               :gs_cash-tx_amt,
+               :gs_cash-bigo,
+               :gs_cash-branch
+          FROM iss_acct_his
+         WHERE site_no = :g_stcd2
+           and acct_txday >= :from_date
+           AND acct_txday <= :p_txday
+      ENDEXEC.
+
+    CATCH cx_sy_native_sql_error INTO exc_ref.
+      error_text = exc_ref->get_text( ).
+      MESSAGE i000 WITH error_text.
+      LEAVE LIST-PROCESSING.
+  ENDTRY.
+
+  PERFORM disconnect_db.
+
+ENDFORM.                    " GET_DB_LINK_DATA
+
+*&---------------------------------------------------------------------*
+*&      Form  DISCONNECT_DB
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM disconnect_db .
+  DATA: lv_dbs_connection TYPE dbcon-con_name VALUE 'EISPRD'.
+  DATA: lv_emsg   TYPE REF TO cx_root.
+
+  TRY.
+      EXEC SQL.
+        DISCONNECT :lv_dbs_connection
+      ENDEXEC.
+    CATCH cx_root INTO lv_emsg.
+      MESSAGE s001 WITH text-m01 DISPLAY LIKE 'E'.
+
+  ENDTRY.
+
+ENDFORM.                    " DISCONNECT_DB
