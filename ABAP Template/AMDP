@@ -1,0 +1,58 @@
+CLASS zcl_amdp_cjh_001 DEFINITION 
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+PUBLIC SECTION.
+    INTERFACEs if_amdp_marker_hdb.
+
+    TYPES: BEGIN OF ty_s_itable,
+            iv_1 TYPE char10,
+            iv_2 TYPE char10,
+           END OF ty_s_itable.
+    TYPES: BEGIN OF ty_s_etable,
+            gjahr TYPE gjahr,
+            belnr TYPE belnr_d,
+            blart TYPE blart,
+            doc   TYPE string,
+           END OF ty_s_etable,
+           ty_t_etable TYPE TABLE OF ty_s_etable.
+
+    " Only ABAP code enable.
+*    METHODS execute_abap IMPORTING VALUE(iv_param) TYPE char10
+*                         EXPORTING VALUE(et_param) TYPE ty_t_etable.
+
+    " ABAP code or SQLSCRIPT enable.
+    METHODS execute IMPORTING VALUE(iv_param) TYPE char10
+                    EXPORTING VALUE(et_param) TYPE ty_t_etable.
+
+PROTECTED SECTION.
+PRIVATE SECTION.
+
+ENDCLASS.
+
+
+
+CLASS zcl_amdp_cjh_001 IMPLEMENTATION.
+    METHOD execute  BY DATABASE PROCEDURE FOR HDB
+                    LANGUAGE SQLSCRIPT
+                    USING BKPF.
+        /* Dummy select. */
+        et_dummy = SELECT iv_param AS input_value
+                        FROM dummy;
+
+        /* data select. */
+        et_data  = SELECT gjahr, belnr, blart
+                        FROM BKPF
+                        WHERE mandt = session_context( 'CLIENT')
+                          AND gjahr = '2022';
+
+        /* iternal table select. */
+        et_param = SELECT a.gjahr,
+                          a.belnr,
+                          a.blart,
+                          (a.gjahr || '_' || a.belnr) AS doc
+                        FROM :et_data AS a;
+
+    ENDMETHOD.
+ENDCLASS.
