@@ -1,66 +1,39 @@
-    DATA: ls_entity_type TYPE <TS_entity_type>.
+method <method 명>.
 
-    DATA: lt_primitive_properties TYPE /iwbep/if_v4_med_element=>ty_t_med_prim_property,
-          lo_primitive_property   LIKE LINE OF lt_primitive_properties,
-          lo_entity_type          TYPE REF TO /iwbep/if_v4_med_entity_type,
-          lo_entity_set           TYPE REF TO /iwbep/if_v4_med_entity_set,
-          lo_cmplx_prop           TYPE REF TO /iwbep/if_v4_med_cplx_prop,
-          lo_nav_prop             TYPE REF TO /iwbep/if_v4_med_nav_prop.
+    " To-Do List Data.
+    DATA: ls_todo_list TYPE /iwbep/if_v4_requ_adv_create=>ty_s_todo_list,
+          ls_done_list TYPE /iwbep/if_v4_requ_adv_create=>ty_s_todo_process_list,
+          lt_desc_list TYPE /iwbep/if_v4_data_desc_node=>ty_t_data_desc_node,
+          lt_chld_list TYPE /iwbep/if_v4_data_desc_node=>ty_t_data_desc_node,
+          ls_done_deep TYPE /iwbep/if_v4_data_desc_node=>ty_s_todo_list.
 
-    DATA: lv_entity_type_name    TYPE /iwbep/if_v4_med_element=>ty_e_med_internal_name,
-          lv_entity_edm_name     TYPE /iwbep/if_v4_med_element=>ty_e_med_edm_name,
-          lv_entity_type_key     TYPE /iwbep/if_v4_med_element=>ty_e_med_internal_name,
-          lv_entity_set_name     TYPE /iwbep/if_v4_med_element=>ty_e_med_internal_name,
-          lv_entity_set_edm_name TYPE /iwbep/if_v4_med_element=>ty_e_med_edm_name,
-          lv_cmplx_prop_name     TYPE /iwbep/if_v4_med_element=>ty_e_med_internal_name,
-          lv_cmplx_edm_name      TYPE /iwbep/if_v4_med_element=>ty_e_med_edm_name,
-          lv_nav_prop_name       TYPE /iwbep/if_v4_med_element=>ty_e_med_internal_name,
-          lv_nav_prop_edm_name   TYPE /iwbep/if_v4_med_element=>ty_e_med_edm_name,
-          lv_nav_target          TYPE /iwbep/if_v4_med_element=>ty_e_med_internal_name.
 
+    DATA: ls_body_data TYPE <mpc=>type>,
+          ls_in_data   TYPE <mpc=>type>.
+
+    " Get Request Todo List & DATA.
+    io_request->get_todos( IMPORTING es_todo_list = ls_todo_list ).
+    io_request->get_data_description_tree_list( IMPORTING et_data_desc_root_node = lt_desc_list ).
+    io_request->get_busi_data( IMPORTING es_busi_data = ls_body_data ).
 
 ************************************************************************
-* Create Enttiy Type.
+(처리 Logic 구현…)
 ************************************************************************
-    lo_entity_type = io_model->create_entity_type_by_struct(
-      EXPORTING
-        iv_entity_type_name          = 'Entity Type명'
-        is_structure                 = ls_entity_type
-        iv_add_conv_to_prim_props    = abap_true
-        iv_add_f4_help_to_prim_props = abap_true
-        iv_gen_prim_props            = abap_true ).
+    io_response->set_busi_data( EXPORTING is_busi_data = ls_body_data ).
 
-    " Set External EDM name form entity type.
-    lo_entity_type->set_edm_name( 'Entity Type명' ).
+    " Set Response Todo List.
+    LOOP AT lt_desc_list INTO DATA(ls_desc_list).
+      ls_desc_list->get_children( IMPORTING et_child = lt_chld_list ).
+      LOOP AT lt_chld_list INTO DATA(ls_chld_list).
+        ls_done_deep-partial_busi_data = 'X'.
+        ls_chld_list->set_is_done( ls_done_deep ).
+      ENDLOOP.
+      ls_done_deep-has_child = 'X'.
+      ls_done_deep-partial_busi_data = 'X'.
+      ls_desc_list->set_is_done( ls_done_deep ).
+    ENDLOOP.
 
-    " Set Key Field.
-    lo_primitive_property =
-               lo_entity_type->get_primitive_property( 'Key 속성명' ).
-    lo_primitive_property->set_is_key( ).
-
-************************************************************************
-* Set Complex Property.
-************************************************************************
-    lo_cmplx_prop = lo_entity_type->create_complex_property(
-                      EXPORTING iv_property_name = 'Complex Type 속성명' ).
-    lo_cmplx_prop->set_complex_type( 'Complex Type 속성명' ).
-    lo_cmplx_prop->set_edm_name( 'Complex Type 속성명' ).
-
-************************************************************************
-* Set Navigation Property.
-************************************************************************
-    lo_nav_prop = lo_entity_type->create_navigation_property(
-                        EXPORTING iv_property_name = 'Navigation Property명' ).
-    lo_nav_prop->set_edm_name('Navigation Property명' ).
-
-    lo_nav_prop->set_target_entity_type_name('Accosiation Target Entity명').
-    lo_nav_prop->set_target_multiplicity( /iwbep/if_v4_med_element=>gcs_med_nav_multiplicity-to_many_optional ).
-
-************************************************************************
-* Create Enttiy Set.
-************************************************************************
-    lo_entity_set =
-            lo_entity_type->create_entity_set( 'EntitySet명' ).
-    lo_entity_set->set_edm_name( 'EntitySet명' ).
-
-endmethod.
+    CLEAR: ls_done_list.
+    ls_done_list-busi_data = 'X'.
+    ls_done_list-partial_busi_data = 'X'.
+    io_response->set_is_done( EXPORTING is_todo_list = ls_done_list ).
