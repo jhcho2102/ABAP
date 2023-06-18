@@ -1,0 +1,155 @@
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZBIZ02.
+
+DATA: ok_code TYPE sy-ucomm,
+      gv_code TYPE sy-ucomm.
+
+DATA: BEGIN OF gs_request,
+        instid     TYPE string,
+        tracingtag TYPE string,
+        taskid     TYPE string,
+        userid     TYPE string,
+        message    TYPE string,
+      END OF gs_request.
+
+DATA: BEGIN OF gs_response,
+        code    TYPE string,
+        message TYPE string,
+      END OF gs_response.
+
+DATA: BEGIN OF gs_error,
+        timestamp TYPE string,
+        status    TYPE string,
+        error     TYPE string,
+        message   TYPE string,
+        path      TYPE string,
+      END OF gs_error.
+
+gs_request-instid = '100'.
+gs_request-tracingtag = '10'.
+gs_request-taskid = '0'.
+gs_request-userid = 'hancheol.cho'.
+gs_request-message = 'S'.
+
+CALL SCREEN 100.
+
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+* SET TITLEBAR 'xxx'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  gv_code = ok_code.
+  CLEAR: ok_code.
+
+  CASE gv_code.
+    WHEN 'BACK' OR 'CANC' OR 'EXIT'.
+      LEAVE PROGRAM.
+
+    WHEN 'CALL_API'.
+      PERFORM call_api.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Form call_api
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM call_api .
+
+  cl_http_client=>create_by_url(
+    EXPORTING
+      url                        = 'http://10.189.76.200:8080/bpm/api/event/receive'
+    IMPORTING
+      client                     = DATA(lo_client)
+    EXCEPTIONS
+      argument_not_found         = 1 " Communication parameter (host or service) not available
+      plugin_not_active          = 2 " HTTP/HTTPS communication not available
+      internal_error             = 3 " Internal error (e.g. name too long)
+      pse_not_found              = 4 " PSE not found
+      pse_not_distrib            = 5 " PSE not distributed
+      pse_errors                 = 6 " General PSE error
+      oa2c_set_token_error       = 7 " General error when setting OAuth token
+      oa2c_missing_authorization = 8
+      oa2c_invalid_config        = 9
+      oa2c_invalid_parameters    = 10
+      oa2c_invalid_scope         = 11
+      oa2c_invalid_grant         = 12
+      others                     = 13 ).
+
+  IF SY-SUBRC <> 0.
+*   MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*     WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  lo_client->request->set_method( if_http_request=>co_request_method_post ).
+  lo_client->request->set_header_field(
+    EXPORTING
+      name  = 'content-type'
+      value = 'application/json;charset=UTF8' ).
+
+
+  DATA(lv_body) =
+    |\{ "instId":     { gs_request-instid },     |
+ && |   "tracingTag": { gs_request-tracingtag }, |
+ && |   "taskId":     {  gs_request-taskid },    |
+ && |   "userId":    "{ gs_request-userid  }" ,    |
+ && |   "message":   "{ gs_request-message }" \}  |.
+
+  CONDENSE lv_body.
+  lo_client->request->set_cdata( lv_body ).
+
+  lo_client->send(
+    EXCEPTIONS
+      http_communication_failure = 1 " Communication Error
+      http_invalid_state         = 2 " Invalid state
+      http_processing_failed     = 3 " Error when processing method
+      http_invalid_timeout       = 4 " Invalid Time Entry
+      others                     = 5 ).
+
+  lo_client->receive(
+    EXCEPTIONS
+      http_communication_failure = 1 " Communication Error
+      http_invalid_state         = 2 " Invalid state
+      http_processing_failed     = 3 " Error when processing method
+      others                     = 4 ).
+
+  lo_client->response->get_status(
+    IMPORTING
+      code   = DATA(response_code)
+      reason = DATA(response_reason) ).
+
+  DATA(cdata) = lo_client->response->get_cdata( ).
+
+  IF response_code = '200'.
+    xco_cp_json=>data->from_string( cdata )->apply(
+      VALUE #(
+        ( xco_cp_json=>transformation->pascal_case_to_underscore )
+        ( xco_cp_json=>transformation->boolean_to_abap_bool )
+      ) )->write_to( REF #( gs_response ) ).
+  ELSE.
+    xco_cp_json=>data->from_string( cdata )->apply(
+      VALUE #(
+        ( xco_cp_json=>transformation->pascal_case_to_underscore )
+        ( xco_cp_json=>transformation->boolean_to_abap_bool )
+      ) )->write_to( REF #( gs_error ) ).
+
+    DATA(lv_error_msg) = |{ gs_error-status } : { gs_error-error }|.
+    MESSAGE lv_error_msg TYPE 'S' DISPLAY LIKE 'E'.
+  ENDIF.
+ENDFORM.
