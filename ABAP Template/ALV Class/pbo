@@ -1,0 +1,111 @@
+*&---------------------------------------------------------------------*
+*& Include
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&       text - input comment
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+*  SET TITLEBAR 'xxx'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module SET_ALV_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&       text - input comment
+*&---------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+  IF GO_GRID_01 IS INITIAL.
+    GET REFERENCE OF GT_DISP INTO GO_DISP.
+
+    GO_GRID_01 = NEW #(
+      IV_CONTAINER_NAME = LIF_ALV=>MC_CUST_CONT_01
+      IT_GRIDS_INFO     = VALUE #(
+( INDEX = '01' TITLE = 'GRID#01' NAME = LIF_ALV=>MC_GRID_01 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+      ) ).
+    GO_GRID_01->DISPLAY( EXPORTING IV_VARIANT = 'X' ).
+  ELSE.
+*    GO_GRID_01->REFRESH( IV_STABLE = 'X' IV_SOFT = '' ).
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module SET_ALV_0200 OUTPUT
+*&---------------------------------------------------------------------*
+*&       text - input comment
+*&---------------------------------------------------------------------*
+MODULE set_alv_0200 OUTPUT.
+  IF GO_GRID_01 IS INITIAL.
+    GET REFERENCE OF GT_DISP INTO GO_DISP.
+
+    GO_GRID_01 = NEW #(
+      IV_CONTAINER_NAME = LIF_ALV=>MC_DOCK_CONT_01
+      IS_SPLIT          = VALUE #( ROW = 2 COL = 1 )
+      IS_OPTIONS        = VALUE #( TOP_OF_PAGE = '' )
+      IT_GRIDS_INFO     = VALUE #(
+( INDEX = '01' TITLE = 'GRID#01' NAME = LIF_ALV=>MC_GRID_01 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+( INDEX = '02' TITLE = 'GRID#02' NAME = LIF_ALV=>MC_GRID_02 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+      ) ).
+    GO_GRID_01->DISPLAY( EXPORTING IV_VARIANT = 'X' ).
+  ELSE.
+*    GO_GRID_01->REFRESH( IV_STABLE = 'X' IV_SOFT = '' ).
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module SET_ALV_0300 OUTPUT
+*&---------------------------------------------------------------------*
+*&       text - input comment
+*&---------------------------------------------------------------------*
+MODULE set_alv_0300 OUTPUT.
+  IF GO_GRID_01 IS INITIAL.
+    GET REFERENCE OF GT_DISP INTO GO_DISP.
+
+    GO_GRID_01 = NEW #(
+      IV_CONTAINER_NAME = LIF_ALV=>MC_DOCK_CONT_01
+      IS_SPLIT          = VALUE #( ROW = 3 COL = 1 HEIGHT = 10
+                                   SUB = VALUE #( ( parent_row = '02' ROW = 1 COL = 2 HEIGHT = 10 )
+                                                  ( parent_row = '03' ROW = 3 COL = 1  ) ) )
+      IS_OPTIONS        = VALUE #( TOP_OF_PAGE = '' )
+      IT_GRIDS_INFO     = VALUE #(
+( INDEX = '01' TITLE = 'GRIDE01' NAME = LIF_ALV=>MC_GRID_01 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+( INDEX = '02' TITLE = 'GRIDE02' NAME = LIF_ALV=>MC_GRID_02 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+( INDEX = '03' TITLE = 'GRIDE03' NAME = LIF_ALV=>MC_GRID_03 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+( INDEX = '04' TITLE = 'GRIDE04' NAME = LIF_ALV=>MC_GRID_04 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+( INDEX = '05' TITLE = 'GRIDE05' NAME = LIF_ALV=>MC_GRID_05 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+( INDEX = '06' TITLE = 'GRIDE06' NAME = LIF_ALV=>MC_GRID_06 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' )
+ )
+    ).
+    GO_GRID_01->DISPLAY( EXPORTING IV_VARIANT = 'X' ).
+  ELSE.
+*    GO_GRID_01->REFRESH( IV_STABLE = 'X' IV_SOFT = 'X' ).
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module SET_ALV_0400 OUTPUT
+*&---------------------------------------------------------------------*
+*&       text - input comment
+*&---------------------------------------------------------------------*
+MODULE set_alv_0400 OUTPUT.
+  IF GO_GRID_01 IS INITIAL.
+    GET REFERENCE OF GT_DISP INTO GO_DISP.
+
+    GO_GRID_01 = NEW #(
+      IV_CONTAINER_NAME = LIF_ALV=>MC_DOCK_CONT_01
+      IS_SPLIT          = VALUE #( ROW = 2 COL = 1 HEIGHT = 15 )
+      IS_OPTIONS        = VALUE #( TOP_OF_PAGE = 'X' )
+      IT_GRIDS_INFO     = VALUE #(
+( INDEX = '01'  )
+( INDEX = '02' TITLE = 'GRID#02' NAME = LIF_ALV=>MC_GRID_02 DATA = GO_DISP FCAT_FORM = 'SET_FIELDCAT_01' DISPLAY_MODE = 0 DOUBLE_CLICK = '' ) )
+    ).
+    GO_GRID_01->DISPLAY( EXPORTING IV_VARIANT = 'X' ).
+  ELSE.
+*    GO_GRID_01->REFRESH( IV_STABLE = 'X' IV_SOFT = 'X' ).
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module SET_ALV_0500 OUTPUT
+*&---------------------------------------------------------------------*
+*&       text - input comment
+*&---------------------------------------------------------------------*
+MODULE set_alv_0500 OUTPUT.
+ENDMODULE.
