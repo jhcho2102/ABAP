@@ -1,0 +1,113 @@
+*&---------------------------------------------------------------------*
+*& TOP
+*&---------------------------------------------------------------------*
+SELECT-OPTIONS: s_kunnr FOR bseg-kunnr NO-DISPLAY.
+DATA: gv_kunnr_l TYPE tvarv_val,
+      gv_kunnr_h TYPE tvarv_val,
+      gv_icon_kunnr_multi TYPE icons-text,
+      gv_icon_kunnr_state TYPE icons-text.
+
+DEFINE &_SET_SELECT_OPTION.
+  zcl_pcm_util=>set_range_with_icon(
+    EXPORTING
+      iv_pbo   = &1
+    CHANGING
+      ct_range = &2
+      cv_low   = &3
+      cv_high  = &4
+      cv_more  = &5
+      cv_stat  = &6 ).
+END-OF-DEFINITION.
+
+*&---------------------------------------------------------------------*
+*& PBO
+*&---------------------------------------------------------------------*
+
+&_SET_SELECT_OPTION: 'X' s_kunnr[] gv_kunnr_l gv_kunnr_h gv_icon_kunnr_multi gv_icon_kunnr_state.
+
+LOOP AT SCREEN.
+    CASE screen-name.
+      WHEN 'GV_ICON_KUNNR_STATE'.
+        IF gv_icon_kunnr_state IS INITIAL.
+          screen-invisible = 1.
+        ELSE.
+          screen-invisible = 0.
+        ENDIF.
+    ENDCASE.
+
+    MODIFY SCREEN.
+  ENDLOOP.
+
+*&---------------------------------------------------------------------*
+*& PAI
+*&---------------------------------------------------------------------*
+
+&_SET_SELECT_OPTION: '' s_kunnr[] gv_kunnr_l gv_kunnr_h gv_icon_kunnr_multi gv_icon_kunnr_state.
+
+CASE GV_OKCOPY.
+    WHEN 'MULTI_KUNNR'.
+      PERFORM set_multi_selection USING 'Customer Code' 'KNA1' 'KUNNR' 'S_KUNNR[]' 'X' ''
+                                  CHANGING gv_kunnr_l gv_kunnr_h.
+  ENDCASE.
+*&---------------------------------------------------------------------*
+*& F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_multi_selection
+*&---------------------------------------------------------------------*
+*& multi selection dialog, then set fields                             *
+*&---------------------------------------------------------------------*
+*&      --> PV_TEXT        "Dialog Text.
+*&      --> PV_TABNAME     "Dialog Rel. Table.
+*&      --> PV_FIELDNAME   "Dialog Rel. Field.
+*&      --> PV_SEL_TAB     "Range Itab.
+*&      <-- PV_SEL_L       "Screen Low value.
+*&      <-- PV_SEL_H       "Screen High value.
+*&      <-- PV_ICON        "Screen multi icon.
+*&      <-- PV_STAT        "Screen option icon.
+*&---------------------------------------------------------------------*
+*& Issue No
+*&---------------------------------------------------------------------*
+FORM set_multi_selection  USING    VALUE(pv_text)
+                                   VALUE(pv_tabname)
+                                   VALUE(pv_fieldname)
+                                   VALUE(pv_sel_tab)
+                                   VALUE(pv_exclude)
+                                   VALUE(pv_search_help)
+                          CHANGING pv_sel_l
+                                   pv_sel_h.
+
+  ASSIGN (pv_sel_tab) TO FIELD-SYMBOL(<l_sel>).
+
+  IF pv_exclude = 'X'.
+    DATA(ls_exclude) = VALUE zcl_pcm_util=>ts_comp_selection_input-excluded_options( bt = 'X' nb = 'X' ).
+  ENDIF.
+
+  zcl_pcm_util=>complex_selection_dialog(
+        EXPORTING
+          is_input  = VALUE #(
+                    text = pv_text
+                    tab_and_field = VALUE #( tablename = pv_tabname
+                                             fieldname = pv_fieldname  )
+                    excluded_options = CORRESPONDING #( ls_exclude )
+                    search_help = pv_search_help )
+        CHANGING
+          et_result = <l_sel> ).
+
+  "--- 첫번 째 값 화면 필드에 초기화
+  IF lines( <l_sel> ) <> 0.
+    LOOP AT <l_sel> ASSIGNING FIELD-SYMBOL(<ls_sel>).
+      CHECK sy-tabix = 1.
+      ASSIGN COMPONENT 'LOW' OF STRUCTURE <ls_sel> TO FIELD-SYMBOL(<l_low>).
+      IF <l_low> IS ASSIGNED.
+        pv_sel_l = <l_low>.
+      ENDIF.
+      ASSIGN COMPONENT 'HIGH' OF STRUCTURE <ls_sel> TO FIELD-SYMBOL(<l_high>).
+      IF <l_high> IS ASSIGNED.
+        pv_sel_h = <l_high>.
+      ENDIF.
+    ENDLOOP.
+  ELSE.
+    CLEAR: <l_sel>, pv_sel_l, pv_sel_h.
+  ENDIF.
+ENDFORM.
