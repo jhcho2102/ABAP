@@ -10,234 +10,248 @@
 * CV_MORE  CHANGING  ICONS-TEXT OPTIONAL | More/Enter Icon             *
 * CV_STAT  CHANGING  ICONS-TEXT OPTIONAL | Option Icon                 *
 * **********************************************************************
-  method SET_RANGE_WITH_ICON.
-    DATA lv_cls_eq.
-    DATA lv_idx TYPE i.
-    DATA ld_ranges TYPE REF TO DATA.
-    DATA ld_range  TYPE REF TO DATA.
-    FIELD-SYMBOLS <l_ranges> TYPE ANY TABLE.
-    FIELD-SYMBOLS <l_range>  TYPE ANY.
-    FIELD-SYMBOLS <l_sign>   TYPE ANY.
-    FIELD-SYMBOLS <l_option> TYPE ANY.
-    FIELD-SYMBOLS <l_low>    TYPE ANY.
-    FIELD-SYMBOLS <l_high>   TYPE ANY.
-    DATA lv_more_name TYPE icons-text.
-    DATA lv_stat_name TYPE icons-text.
+  METHOD SET_RANGE_WITH_ICON.
+    DATA LV_CLS_EQ.
+    DATA LV_IDX TYPE I.
+    DATA LD_RANGES TYPE REF TO DATA.
+    DATA LD_RANGE  TYPE REF TO DATA.
+    FIELD-SYMBOLS <L_RANGES> TYPE ANY TABLE.
+    FIELD-SYMBOLS <L_RANGE>  TYPE ANY.
+    FIELD-SYMBOLS <L_SIGN>   TYPE ANY.
+    FIELD-SYMBOLS <L_OPTION> TYPE ANY.
+    FIELD-SYMBOLS <L_LOW>    TYPE ANY.
+    FIELD-SYMBOLS <L_HIGH>   TYPE ANY.
+    DATA LV_MORE_NAME TYPE ICONS-TEXT.
+    DATA LV_STAT_NAME TYPE ICONS-TEXT.
 
     "---[S] initialization.
-    DATA(lv_lines)     = lines( ct_range ).
-    DATA(lv_input_l)   = cv_low.
-    DATA(lv_input_h)   = cv_high.
-    DATA(lv_option) = cv_stat+2(1).
+    DATA(LV_LINES)     = LINES( CT_RANGE ).
+    DATA(LV_INPUT_L)   = CV_LOW.
+    DATA(LV_INPUT_H)   = CV_HIGH.
+    DATA(LV_OPTION) = CV_STAT+2(1).
 
-    GET REFERENCE OF ct_range INTO ld_ranges.
-    ASSIGN ld_ranges->* TO <l_ranges>.
+    GET REFERENCE OF CT_RANGE INTO LD_RANGES.
+    ASSIGN LD_RANGES->* TO <L_RANGES>.
     "---[E] initialization.
 
+    FIELD-SYMBOLS <LS_WA> TYPE ANY.
+    DATA LD_STRUC TYPE REF TO DATA.
+    DATA: LV_FIELD.
+    CREATE DATA LD_STRUC LIKE LINE OF <L_RANGES>.
+    ASSIGN LD_STRUC->* TO <LS_WA>.
+    ASSIGN COMPONENT 'LOW'    OF STRUCTURE <LS_WA> TO FIELD-SYMBOL(<L_VALUE>).
+    DESCRIBE FIELD <L_VALUE> TYPE LV_FIELD.
+    IF LV_FIELD = 'N'.
+      SHIFT LV_INPUT_L LEFT DELETING LEADING '0'.
+      CONDENSE LV_INPUT_L.
+      SHIFT LV_INPUT_H LEFT DELETING LEADING '0'.
+      CONDENSE LV_INPUT_H.
+    ENDIF.
+
     "---[S] set ranges in PAI.
-    IF iv_pbo <> 'X'.
+    IF IV_PBO <> 'X'.
 
-      IF lv_lines < 1.
-        IF lv_input_l IS INITIAL AND lv_input_h IS INITIAL.
+      IF LV_LINES < 1.
+        IF LV_INPUT_L IS INITIAL AND LV_INPUT_H IS INITIAL.
         ELSE.
-          INSERT INITIAL LINE INTO TABLE <l_ranges> ASSIGNING <l_range>.
-          ASSIGN COMPONENT 'SIGN'   OF STRUCTURE <l_range> TO <l_sign>.
-          ASSIGN COMPONENT 'OPTION' OF STRUCTURE <l_range> TO <l_option>.
-          ASSIGN COMPONENT 'LOW'    OF STRUCTURE <l_range> TO <l_low>.
-          ASSIGN COMPONENT 'HIGH'   OF STRUCTURE <l_range> TO <l_high>.
+          INSERT INITIAL LINE INTO TABLE <L_RANGES> ASSIGNING <L_RANGE>.
+          ASSIGN COMPONENT 'SIGN'   OF STRUCTURE <L_RANGE> TO <L_SIGN>.
+          ASSIGN COMPONENT 'OPTION' OF STRUCTURE <L_RANGE> TO <L_OPTION>.
+          ASSIGN COMPONENT 'LOW'    OF STRUCTURE <L_RANGE> TO <L_LOW>.
+          ASSIGN COMPONENT 'HIGH'   OF STRUCTURE <L_RANGE> TO <L_HIGH>.
 
-          <l_sign> = CONV #( 'I' ).
-          <l_low>  = CONV #( lv_input_l ).
-          <l_high> = CONV #( lv_input_h ).
+          <L_SIGN> = CONV #( 'I' ).
+          <L_LOW>  = COND #( WHEN LV_INPUT_L IS NOT INITIAL THEN LV_INPUT_L ).
+          <L_HIGH> = COND #( WHEN LV_INPUT_H IS NOT INITIAL THEN LV_INPUT_H ).
 
-          IF <l_high> IS INITIAL.
-            IF <l_low> CA '*'.
-              <l_option> = 'CP'.
+          IF <L_HIGH> IS INITIAL.
+            IF <L_LOW> CA '*'.
+              <L_OPTION> = 'CP'.
             ELSE.
-              <l_option> = 'EQ'.
+              <L_OPTION> = 'EQ'.
             ENDIF.
           ELSE.
-              <l_option> = 'BT'.
+            <L_OPTION> = 'BT'.
           ENDIF.
         ENDIF.
 
-      ELSEIF lv_lines >= 1.
-        CLEAR: lv_idx.
-        lv_idx = 1.
-        LOOP AT <l_ranges> ASSIGNING <l_range>.
-          IF lv_idx > 1.
+      ELSEIF LV_LINES >= 1.
+        CLEAR: LV_IDX.
+        LV_IDX = 1.
+        LOOP AT <L_RANGES> ASSIGNING <L_RANGE>.
+          IF LV_IDX > 1.
             EXIT.
           ENDIF.
 
-          ASSIGN COMPONENT 'SIGN'   OF STRUCTURE <l_range> TO <l_sign>.
-          ASSIGN COMPONENT 'OPTION' OF STRUCTURE <l_range> TO <l_option>.
-          ASSIGN COMPONENT 'LOW'    OF STRUCTURE <l_range> TO <l_low>.
-          ASSIGN COMPONENT 'HIGH'   OF STRUCTURE <l_range> TO <l_high>.
+          ASSIGN COMPONENT 'SIGN'   OF STRUCTURE <L_RANGE> TO <L_SIGN>.
+          ASSIGN COMPONENT 'OPTION' OF STRUCTURE <L_RANGE> TO <L_OPTION>.
+          ASSIGN COMPONENT 'LOW'    OF STRUCTURE <L_RANGE> TO <L_LOW>.
+          ASSIGN COMPONENT 'HIGH'   OF STRUCTURE <L_RANGE> TO <L_HIGH>.
 
-          IF lv_input_l IS INITIAL AND lv_input_h IS INITIAL.
-            IF <l_option> = 'BT' OR <l_option> = 'NB'.
-              DELETE ct_range INDEX 1.
+          IF LV_INPUT_L IS INITIAL AND LV_INPUT_H IS INITIAL.
+            IF <L_OPTION> = 'BT' OR <L_OPTION> = 'NB'.
+              DELETE CT_RANGE INDEX 1.
             ELSE.
-              IF lv_option IS INITIAL.
-                DELETE ct_range INDEX 1.
-              ELSEIF lv_option <> '0' AND <l_low> IS NOT INITIAL.
-                DELETE ct_range INDEX 1.
+              IF LV_OPTION IS INITIAL.
+                DELETE CT_RANGE INDEX 1.
+              ELSEIF LV_OPTION <> '0' AND <L_LOW> IS NOT INITIAL.
+                DELETE CT_RANGE INDEX 1.
               ENDIF.
             ENDIF.
 
           ELSE.
-            IF lv_input_h IS INITIAL.
-              IF lv_input_l CA '*'.
-                <l_option> = 'CP'.
+            IF LV_INPUT_H IS INITIAL.
+              IF LV_INPUT_L CA '*'.
+                <L_OPTION> = 'CP'.
               ELSE.
-                IF <l_option> = 'BT' OR <l_option> = 'NB'.
-                  <l_option> = 'EQ'.
+                IF <L_OPTION> = 'BT' OR <L_OPTION> = 'NB'.
+                  <L_OPTION> = 'EQ'.
                 ENDIF.
               ENDIF.
-              IF lv_option = '0'.
-                lv_cls_eq = 'X'.
+              IF LV_OPTION = '0'.
+                LV_CLS_EQ = 'X'.
               ENDIF.
 
             ELSE.
-              IF <l_option> = 'NB'.
-                <l_option> = 'NB'.
+              IF <L_OPTION> = 'NB'.
+                <L_OPTION> = 'NB'.
               ELSE.
-                <l_option> = 'BT'.
+                <L_OPTION> = 'BT'.
               ENDIF.
             ENDIF.
 
-            <l_low>  = CONV #( lv_input_l ).
-            <l_high> = CONV #( lv_input_h ).
+            <L_LOW>  = CONV #( LV_INPUT_L ).
+            <L_HIGH> = CONV #( LV_INPUT_H ).
 
           ENDIF.
 
-          lv_idx += 1.
+          LV_IDX += 1.
         ENDLOOP.
       ENDIF.
 
-      IF <l_range> IS ASSIGNED.
-        UNASSIGN: <l_range>.
+      IF <L_RANGE> IS ASSIGNED.
+        UNASSIGN: <L_RANGE>.
       ENDIF.
 
-      IF <l_sign> IS ASSIGNED.
-        UNASSIGN: <l_sign>.
+      IF <L_SIGN> IS ASSIGNED.
+        UNASSIGN: <L_SIGN>.
       ENDIF.
 
-      IF <l_option> IS ASSIGNED.
-        UNASSIGN: <l_option>.
+      IF <L_OPTION> IS ASSIGNED.
+        UNASSIGN: <L_OPTION>.
       ENDIF.
 
-      IF <l_low> IS ASSIGNED.
-        UNASSIGN: <l_low>.
+      IF <L_LOW> IS ASSIGNED.
+        UNASSIGN: <L_LOW>.
       ENDIF.
 
-      IF <l_high> IS ASSIGNED.
-        UNASSIGN: <l_high>.
+      IF <L_HIGH> IS ASSIGNED.
+        UNASSIGN: <L_HIGH>.
       ENDIF.
     ENDIF.
     "---[E] set ranges in PAI.
 
     "---[S] set screen field & icons.
-    CLEAR: lv_lines.
-    lv_lines = lines( ct_range ).
-    IF lv_lines <= 1.
-      lv_more_name = '@1F@'."ICON_ENTER_MORE.
+    CLEAR: LV_LINES.
+    LV_LINES = LINES( CT_RANGE ).
+    IF LV_LINES <= 1.
+      LV_MORE_NAME = '@1F@'."ICON_ENTER_MORE.
     ELSE.
-      lv_more_name = '@1E@'."ICON_DISPLAY_MORE.
+      LV_MORE_NAME = '@1E@'."ICON_DISPLAY_MORE.
     ENDIF.
 
-    CLEAR: lv_idx.
-    lv_idx = 1.
-    LOOP AT <l_ranges> ASSIGNING <l_range>.
-      IF lv_idx > 1.
+    CLEAR: LV_IDX.
+    LV_IDX = 1.
+    LOOP AT <L_RANGES> ASSIGNING <L_RANGE>.
+      IF LV_IDX > 1.
         EXIT.
       ENDIF.
-      ASSIGN COMPONENT 'SIGN'   OF STRUCTURE <l_range> TO <l_sign>.
-      ASSIGN COMPONENT 'OPTION' OF STRUCTURE <l_range> TO <l_option>.
-      ASSIGN COMPONENT 'LOW'    OF STRUCTURE <l_range> TO <l_low>.
-      ASSIGN COMPONENT 'HIGH'   OF STRUCTURE <l_range> TO <l_high>.
+      ASSIGN COMPONENT 'SIGN'   OF STRUCTURE <L_RANGE> TO <L_SIGN>.
+      ASSIGN COMPONENT 'OPTION' OF STRUCTURE <L_RANGE> TO <L_OPTION>.
+      ASSIGN COMPONENT 'LOW'    OF STRUCTURE <L_RANGE> TO <L_LOW>.
+      ASSIGN COMPONENT 'HIGH'   OF STRUCTURE <L_RANGE> TO <L_HIGH>.
 
-      IF <l_option> IS NOT INITIAL.
-        IF <l_sign> = 'I'.
-          CASE <l_option>.
-            WHEN 'EQ'. lv_stat_name = '0'.
-            WHEN 'NE'. lv_stat_name = '1'.
-            WHEN 'GT'. lv_stat_name = '2'.
-            WHEN 'LT'. lv_stat_name = '3'.
-            WHEN 'GE'. lv_stat_name = '4'.
-            WHEN 'LE'. lv_stat_name = '5'.
-            WHEN 'BT'. lv_stat_name = '6'.
-            WHEN 'NB'. lv_stat_name = '7'.
-            WHEN 'CP'. lv_stat_name = '8'.
-            WHEN 'NP'. lv_stat_name = '9'.
+      IF <L_OPTION> IS NOT INITIAL.
+        IF <L_SIGN> = 'I'.
+          CASE <L_OPTION>.
+            WHEN 'EQ'. LV_STAT_NAME = '0'.
+            WHEN 'NE'. LV_STAT_NAME = '1'.
+            WHEN 'GT'. LV_STAT_NAME = '2'.
+            WHEN 'LT'. LV_STAT_NAME = '3'.
+            WHEN 'GE'. LV_STAT_NAME = '4'.
+            WHEN 'LE'. LV_STAT_NAME = '5'.
+            WHEN 'BT'. LV_STAT_NAME = '6'.
+            WHEN 'NB'. LV_STAT_NAME = '7'.
+            WHEN 'CP'. LV_STAT_NAME = '8'.
+            WHEN 'NP'. LV_STAT_NAME = '9'.
           ENDCASE.
         ELSE.
-          CASE <l_option>.
-            WHEN 'EQ'. lv_stat_name = 'A'.
-            WHEN 'NE'. lv_stat_name = 'B'.
-            WHEN 'GT'. lv_stat_name = 'C'.
-            WHEN 'LT'. lv_stat_name = 'D'.
-            WHEN 'GE'. lv_stat_name = 'E'.
-            WHEN 'LE'. lv_stat_name = 'F'.
-            WHEN 'BT'. lv_stat_name = 'G'.
-            WHEN 'NB'. lv_stat_name = 'H'.
-            WHEN 'CP'. lv_stat_name = 'I'.
-            WHEN 'NP'. lv_stat_name = 'J'.
+          CASE <L_OPTION>.
+            WHEN 'EQ'. LV_STAT_NAME = 'A'.
+            WHEN 'NE'. LV_STAT_NAME = 'B'.
+            WHEN 'GT'. LV_STAT_NAME = 'C'.
+            WHEN 'LT'. LV_STAT_NAME = 'D'.
+            WHEN 'GE'. LV_STAT_NAME = 'E'.
+            WHEN 'LE'. LV_STAT_NAME = 'F'.
+            WHEN 'BT'. LV_STAT_NAME = 'G'.
+            WHEN 'NB'. LV_STAT_NAME = 'H'.
+            WHEN 'CP'. LV_STAT_NAME = 'I'.
+            WHEN 'NP'. LV_STAT_NAME = 'J'.
           ENDCASE.
         ENDIF.
       ENDIF.
-      lv_stat_name = '@2' && lv_stat_name && '@'.
+      LV_STAT_NAME = '@2' && LV_STAT_NAME && '@'.
 
       " clear status icon.
-      IF lv_input_l IS NOT INITIAL AND lv_stat_name = '@20@'.
-        CLEAR: lv_stat_name.
+      IF LV_INPUT_L IS NOT INITIAL AND LV_STAT_NAME = '@20@'.
+        CLEAR: LV_STAT_NAME.
       ENDIF.
 
-      IF lv_option = '0' AND lv_input_l IS NOT INITIAL.
-        CLEAR: lv_stat_name.
+      IF LV_OPTION = '0' AND LV_INPUT_L IS NOT INITIAL.
+        CLEAR: LV_STAT_NAME.
       ENDIF.
 
-      IF lv_cls_eq = 'X'.
-        CLEAR: lv_stat_name.
+      IF LV_CLS_EQ = 'X'.
+        CLEAR: LV_STAT_NAME.
       ENDIF.
 
-      IF lv_stat_name = '@26@'.
-        CLEAR: lv_stat_name.
+      IF LV_STAT_NAME = '@26@'.
+        CLEAR: LV_STAT_NAME.
       ENDIF.
 
 
-      cv_low  = CONV #( <l_low> ).
-      cv_high = CONV #( <l_high> ).
-      lv_idx += 1.
+      CV_LOW  = CONV #( <L_LOW> ).
+      CV_HIGH = CONV #( <L_HIGH> ).
+      LV_IDX += 1.
     ENDLOOP.
     "---[E] set screen field & icons.
 
     "---[S] create icons.
     CALL FUNCTION 'ICON_CREATE'
-        EXPORTING
-          name                        = lv_more_name
-        IMPORTING
-          RESULT                      = cv_more
-       EXCEPTIONS
-         ICON_NOT_FOUND              = 1
-         OUTPUTFIELD_TOO_SHORT       = 2
-         OTHERS                      = 3 .
+      EXPORTING
+        NAME                  = LV_MORE_NAME
+      IMPORTING
+        RESULT                = CV_MORE
+      EXCEPTIONS
+        ICON_NOT_FOUND        = 1
+        OUTPUTFIELD_TOO_SHORT = 2
+        OTHERS                = 3.
 
-    IF lv_stat_name IS INITIAL.
-      CLEAR: cv_stat.
+    IF LV_STAT_NAME IS INITIAL.
+      CLEAR: CV_STAT.
     ELSE.
       CALL FUNCTION 'ICON_CREATE'
-          EXPORTING
-            name                        = lv_stat_name
-          IMPORTING
-            RESULT                      = cv_stat
-         EXCEPTIONS
-           ICON_NOT_FOUND              = 1
-           OUTPUTFIELD_TOO_SHORT       = 2
-           OTHERS                      = 3 .
-      IF strlen( cv_stat ) > 4.
-        cv_stat = cv_stat+0(3) && '@'.
+        EXPORTING
+          NAME                  = LV_STAT_NAME
+        IMPORTING
+          RESULT                = CV_STAT
+        EXCEPTIONS
+          ICON_NOT_FOUND        = 1
+          OUTPUTFIELD_TOO_SHORT = 2
+          OTHERS                = 3.
+      IF STRLEN( CV_STAT ) > 4.
+        CV_STAT = CV_STAT+0(3) && '@'.
       ENDIF.
     ENDIF.
     "---[E] create icons
-  endmethod.
+  ENDMETHOD.
