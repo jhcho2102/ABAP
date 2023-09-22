@@ -1,0 +1,292 @@
+*&---------------------------------------------------------------------*
+*& Include
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form handle_double_click
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&      --> E_ROW
+*&      --> E_COLUMN
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM HANDLE_DOUBLE_CLICK  USING PS_ROW    TYPE LVC_S_ROW
+                                PS_COLUMN TYPE LVC_S_COL
+                                PO_SENDER TYPE REF TO CL_GUI_ALV_GRID.
+  FIELD-SYMBOLS <L_GRID_DATA>.
+  CASE PO_SENDER->GET_NAME( ).
+    WHEN LIF_ALV=>MC_GRID_01.
+      ASSIGN GO_GRID_01->MO_GRID_01->MO_DATA->* TO <L_GRID_DATA>.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  LOOP AT <L_GRID_DATA> ASSIGNING FIELD-SYMBOL(<L_DATA>).
+    IF SY-TABIX = PS_ROW-INDEX.
+      ASSIGN COMPONENT PS_COLUMN-FIELDNAME OF STRUCTURE <L_DATA> TO FIELD-SYMBOL(<L_VALUE>).
+      IF SY-SUBRC = 0.
+
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form HANDLE_HOTSPOT
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM HANDLE_HOTSPOT  USING    PS_ROW_ID    TYPE LVC_S_ROW
+                              PS_COLUMN_ID TYPE LVC_S_COL
+                              PO_SENDER    TYPE REF TO CL_GUI_ALV_GRID.
+  CHECK PS_ROW_ID IS NOT INITIAL.
+  CHECK PS_COLUMN_ID IS NOT INITIAL.
+
+  CASE PO_SENDER->GET_NAME( ).
+    WHEN LIF_ALV=>MC_GRID_01.
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form HANDLE_TOOLBAR
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&      --> E_INTERACTIVE
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM HANDLE_TOOLBAR  USING    PO_OBJECT TYPE REF TO CL_ALV_EVENT_TOOLBAR_SET
+                              PO_SENDER TYPE REF TO CL_GUI_ALV_GRID.
+  CASE PO_SENDER->GET_NAME( ).
+    WHEN LIF_ALV=>MC_GRID_01.
+      APPEND VALUE #( BUTN_TYPE = 3 ) TO PO_OBJECT->MT_TOOLBAR.
+
+      APPEND VALUE #( FUNCTION  = 'SAVE'
+                      QUICKINFO = 'Save'
+                      TEXT      = 'Save'
+                      DISABLED  = '' ) TO PO_OBJECT->MT_TOOLBAR.
+
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form HANDLE_UCOM
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM HANDLE_UCOM  USING    PV_UCOMM  TYPE SY-UCOMM
+                           PO_SENDER TYPE REF TO CL_GUI_ALV_GRID.
+
+  CASE PO_SENDER->GET_NAME( ).
+    WHEN LIF_ALV=>MC_GRID_01.
+      CASE PV_UCOMM.
+        WHEN ''.
+
+      ENDCASE.
+      GO_GRID_01->REFRESH( IV_INDEX = '01' IV_STABLE = 'X' IV_SOFT = '' ).
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form HANDLE_ONF4
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&      --> E_FIELDNAME
+*&      --> E_FIELDVALUE
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM HANDLE_ONF4  USING PV_FIELDNAME  TYPE LVC_FNAME
+                        PV_FIELDVALUE TYPE LVC_VALUE ##NEEDED
+                        PS_ROW_NO     TYPE LVC_S_ROID
+                        PV_DISPLAY    TYPE CHAR01
+                        PO_EVENT_DATA TYPE REF TO CL_ALV_EVENT_DATA
+                        PO_SENDER     TYPE REF TO CL_GUI_ALV_GRID.
+
+  DATA: LV_TABNAME     TYPE DFIES-TABNAME,
+        LV_SEARCH_HELP TYPE SHLPNAME.
+  DATA: LS_MODI        TYPE LVC_S_MODI,
+        LT_RETURN      TYPE TABLE OF DDSHRETVAL.
+
+  FIELD-SYMBOLS: <L_MODI>    TYPE LVC_T_MODI,
+                 <L_F4_DATA> TYPE STANDARD TABLE.
+
+  CASE PO_SENDER->GET_NAME( ).
+    WHEN LIF_ALV=>MC_GRID_01.
+      CASE PV_FIELDNAME.
+        WHEN 'CARRID'.
+          LV_TABNAME     = 'SACRR'.
+          LV_SEARCH_HELP = 'S_CARRIER_ID'.
+
+        WHEN 'CATEGRP'.
+          SELECT WAERS AS CURRENCY , KTEXT
+                FROM TCURT
+                INTO TABLE @DATA(LT_TCURT)
+                WHERE SPRAS EQ @SY-LANGU.
+
+          ASSIGN LT_TCURT TO <L_F4_DATA>.
+
+        WHEN OTHERS.
+      ENDCASE.
+  ENDCASE.
+
+  "--- Set F4 by selected data.
+  IF <L_F4_DATA> IS ASSIGNED .
+    CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+      EXPORTING
+        RETFIELD        = PV_FIELDNAME
+        DYNPPROG        = SY-REPID
+        DYNPNR          = SY-DYNNR
+        VALUE_ORG       = 'S'
+      TABLES
+        VALUE_TAB       = <L_F4_DATA>
+        RETURN_TAB      = LT_RETURN
+      EXCEPTIONS
+        PARAMETER_ERROR = 1
+        NO_VALUES_FOUND = 2
+        OTHERS          = 3 .
+
+    IF sy-subrc <> 0.
+*      EXIT.
+    ENDIF.
+  ENDIF.
+
+  "--- Search hlep Call.
+  IF LV_SEARCH_HELP IS NOT INITIAL .
+    CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+      EXPORTING
+        TABNAME           = LV_TABNAME
+        FIELDNAME         = PV_FIELDNAME
+        SEARCHHELP        = LV_SEARCH_HELP
+        DYNPPROG          = SY-REPID
+        DYNPNR            = SY-DYNNR
+      TABLES
+        RETURN_TAB        = LT_RETURN
+      EXCEPTIONS
+        FIELD_NOT_FOUND   = 1
+        NO_HELP_FOR_FIELD = 2
+        INCONSISTENT_HELP = 3
+        NO_VALUES_FOUND   = 4
+        OTHERS            = 5.
+
+    IF sy-subrc <> 0.
+*      EXIT.
+    ENDIF.
+  ENDIF.
+
+
+  IF  PV_DISPLAY = ABAP_FALSE.   "Edit 모드 일때 데이터 적용 .
+    "--* 선택한 데이터  화면에 적용.
+    READ TABLE LT_RETURN INTO DATA(LS_RETURN) INDEX 1 .
+    IF SY-SUBRC = 0.
+
+      ASSIGN PO_EVENT_DATA->M_DATA->* TO <L_MODI> .
+
+      LS_MODI-ROW_ID    = PS_ROW_NO-ROW_ID.
+      LS_MODI-FIELDNAME = PV_FIELDNAME.
+      LS_MODI-VALUE     = LS_RETURN-FIELDVAL.
+      INSERT LS_MODI INTO TABLE <L_MODI>.
+    ENDIF.
+  ENDIF.
+
+  "--* Display , Edit 모두 사용.
+  PO_EVENT_DATA->M_EVENT_HANDLED = 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form HANDLE_DATA_CHANGED
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&      --> ER_DATA_CHANGED
+*&      --> SENDER
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM handle_data_changed  USING po_data_changed TYPE REF TO cl_alv_changed_data_protocol
+                                po_sender       TYPE REF TO cl_gui_alv_grid.
+  CASE PO_SENDER->GET_NAME( ).
+    WHEN LIF_ALV=>MC_GRID_01.
+
+      LOOP AT PO_DATA_CHANGED->MT_GOOD_CELLS INTO DATA(LS_MODI).
+
+      ENDLOOP.
+
+      GO_GRID_01->REFRESH( IV_INDEX = '01' IV_STABLE = 'X' IV_SOFT = '' ).
+
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form HANDLE_TOP_OF_PAGE
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&      --> E_DYNDOC_ID
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM handle_top_of_page USING po_dyndoc_id TYPE REF TO cl_dd_document
+                              po_sender    TYPE REF TO cl_gui_alv_grid.
+
+    CASE PO_SENDER->GET_NAME( ).
+      WHEN OTHERS.
+        PO_DYNDOC_ID->ADD_TEXT(
+          EXPORTING
+            TEXT          = 'TITLE'
+            SAP_STYLE     = CL_DD_AREA=>HEADING
+            SAP_COLOR     = CL_DD_AREA=>LIST_HEADING_INT
+            SAP_FONTSTYLE = CL_DD_AREA=>LARGE ).
+    ENDCASE.
+
+  GO_GRID_01->DISPLAY_TOP_OF_PAGE( ).
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*& Form set_fieldcat_01
+*&---------------------------------------------------------------------*
+*& ★필수작성★ Form문 기능/내용                               *
+*&---------------------------------------------------------------------*
+*&     --> CT_FCAT
+*&---------------------------------------------------------------------*
+*& Issue No
+*&
+*&---------------------------------------------------------------------*
+FORM SET_FIELDCAT_01 CHANGING PT_FCAT TYPE LVC_T_FCAT ##CALLED.
+  LOOP AT PT_FCAT ASSIGNING FIELD-SYMBOL(<L_FCAT>).
+    <L_FCAT>-COL_OPT = 'X'.
+    CASE <L_FCAT>-FIELDNAME.
+      WHEN 'SYS_ID'.
+      WHEN 'SYS_NM'.
+      WHEN 'CATEGRP'.
+        <L_FCAT>-f4availabl = 'X'.
+      WHEN OTHERS.
+        <L_FCAT>-NO_OUT = 'X'.
+    ENDCASE.
+  ENDLOOP.
+ENDFORM.
