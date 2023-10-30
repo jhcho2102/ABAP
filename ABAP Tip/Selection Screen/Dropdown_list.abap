@@ -16,7 +16,7 @@ INITIALIZATION.
   
     CALL FUNCTION 'VRM_SET_VALUES'
       EXPORTING
-        id                    = 'P_DISP'
+        id                    = 'P_LIST'
         values                = lt_list
       EXCEPTIONS
         ID_ILLEGAL_NAME       = 1
