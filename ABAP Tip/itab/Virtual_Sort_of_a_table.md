@@ -30,6 +30,5 @@ cl_abap_itab_utilities=>virtual_sort(
 
 ## Build Sorted Table
 ```abap
-lt_sorted_tab = VALUE #( FOR lv_idx IN lt_index
-                         ( lt_itab[ lv_idx ] ) ).
+lt_sorted_tab = VALUE #( FOR lv_idx IN lt_index ( lt_itab[ lv_idx ] ) ).
 ```
