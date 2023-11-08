@@ -5,4 +5,4 @@
 <br>
 `CL_ABAP_ITAB_UTILITIES=>VIRTUAL_SORT(...)`
 <br>
-[Virtual Sort of a table](./Virtual_Sort_of_a_table.md)
+[1. Virtual Sort of a table](./Virtual_Sort_of_a_table.md)
