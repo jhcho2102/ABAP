@@ -1,5 +1,4 @@
-<h1 background="gray"><span style="color:red">Internal Table</span></h1>
-</br>
+<h1>Internal Table</h1>
 <h2>Read Table</h2>
 
 <h2>Virtual Sorting</h2>
