@@ -1,4 +1,4 @@
-<h1><span style="color:#808080">Internal Table</span></h1>
+<h1><span style="color:red">Internal Table</span></h1>
 </br>
 <h2>Read Table</h2>
 
