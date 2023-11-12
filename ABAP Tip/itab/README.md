@@ -1,5 +1,5 @@
 # Internal Table
-## TYPE TABLE OF
+## WITH KEY ...
 [WITH PRIMARY KEY](./src/)
 ## Read Table
 ## Virtual Sorting
