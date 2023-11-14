@@ -1,6 +1,6 @@
 # Internal Table
 ## WITH KEY ...
-[1. WITH PRIMARY KEY](./src/primary_key.md)
+[1. WITH PRIMARY KEY](./src/primary_key.md)<br>
 [2. WITH SECONDARY KEY](./src/)
 <br>
 ## Read Table
