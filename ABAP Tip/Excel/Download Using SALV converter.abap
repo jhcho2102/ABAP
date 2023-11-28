@@ -1,15 +1,19 @@
-  DATA: lo_salv      TYPE REF TO cl_salv_table.
-  DATA: lo_worksheet TYPE REF TO zcl_excel_worksheet.
-  DATA: lo_columns   TYPE REF TO cl_salv_columns_table.
-  DATA: lo_column    TYPE REF TO cl_salv_column_table.
-  DATA: lo_converter TYPE REF TO zcl_excel_converter.
+  DATA: lo_string    TYPE REF TO cl_abap_datadescr.
+  DATA: lt_column    TYPE if_fdt_doc_spreadsheet=>t_column. " excel column명 저장된 itab.
+
+  DATA: lo_salv         TYPE REF TO cl_salv_table.
+  DATA: lo_worksheet    TYPE REF TO zcl_excel_worksheet.
+  DATA: lo_columns      TYPE REF TO cl_salv_columns_table.
+  DATA: lo_column       TYPE REF TO cl_salv_column_table.
+  DATA: lo_converter    TYPE REF TO zcl_excel_converter.
+  DATA: lo_excel_writer TYPE REF TO zif_excel_writer.
+
   DATA: lt_file      TYPE solix_tab,
         lv_bytecount TYPE i,
         lv_file      TYPE xstring.
   DATA: ls_seoclass  TYPE seoclass.
-  DATA: lo_excel_writer TYPE REF TO zif_excel_writer.
 
-...
+  ...
 
   "=== Excel Download할 데이터로 SALV 객체 생성.
   TRY.
@@ -25,7 +29,7 @@
   "=== SALV의 column tex 설정.
   lo_columns = lo_salv->get_columns( ).
   lo_columns->set_optimize( 'X' ).
-  LOOP AT lt_column INTO DATA(ls_coltext). " lt_column : excel column명 저장된 itab.
+  LOOP AT lt_column INTO DATA(ls_coltext). 
     TRY.
       lo_column ?= lo_columns->get_column( CONV #( ls_coltext-name ) ).
     CATCH CX_SALV_NOT_FOUND.
