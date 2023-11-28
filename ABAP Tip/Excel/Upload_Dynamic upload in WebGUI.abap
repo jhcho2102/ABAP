@@ -22,9 +22,9 @@ FORM get_excel_data .
     LEAVE LIST-PROCESSING.
   ENDIF.
 
-  PERFORM get_binary_data CHANGING lv_headerxstring.
+  PERFORM get_binary_data CHANGING lv_headerxstring.     "--- File -> Binary Data.
   IF lv_headerxstring IS NOT INITIAL.
-    PERFORM get_excel_ref_data USING    lv_headerxstring
+    PERFORM get_excel_ref_data USING    lv_headerxstring "--- Binary Data -> Excel Ref Data.
                                CHANGING lo_data_ref
                                         lo_cx_excel.
     IF lo_cx_excel IS NOT INITIAL.
@@ -36,10 +36,10 @@ FORM get_excel_data .
       RETURN.
     ENDIF.
 
-    PERFORM get_types_from_ref_data USING    lo_data_ref
+    PERFORM get_types_from_ref_data USING    lo_data_ref "--- Excel Ref Data -> Excel Itab Data.
                                     CHANGING lt_excel.
 
-    PERFORM convert_excel_to_inner_data USING lt_excel.
+    PERFORM convert_excel_to_inner_data USING lt_excel.  "--- Excel Itab Data -> Display Itab Data.
   ENDIF.
 ENDFORM.
 
