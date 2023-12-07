@@ -1,0 +1,5 @@
+CALL FUNCTION 'NUMERIC_CHECK'
+     EXPORTING
+          STRING_IN = LV_STR
+     IMPORTING
+          HTYPE     = LV_TYPE.
